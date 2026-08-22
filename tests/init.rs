@@ -58,8 +58,8 @@ fn init_seeds_new_repo_and_passes_check() {
     assert!(s.path().join("AGENTS.md").exists());
     // Instruction set emitted (W4 placeholders are wired via include_str!).
     assert!(
-        out.contains("TODO: W4 authors this file per SPINE section 7"),
-        "init prints instructions: {out}"
+        out.contains("AGENTS.md") && out.contains("think/"),
+        "init prints the real instruction set: {out}"
     );
 
     // A subsequent check passes (idempotent, artifacts fresh).
@@ -86,7 +86,7 @@ fn init_missing_seed_is_loud() {
     let s = Scratch::new("init-noseed");
     let out = Command::new(bedrock_exe())
         .args(["init", s.path().to_str().unwrap()])
-        .current_dir(manifest())
+        .current_dir(s.path())
         .env_remove("BEDROCK_SEED")
         .output()
         .unwrap();
@@ -154,8 +154,8 @@ fn adopt_writes_mode_adopt_record_and_regenerates() {
     assert!(text.contains("offline: false"), "{text}");
     // Instructions printed.
     assert!(
-        out.contains("TODO: W4 authors this file per SPINE section 7"),
-        "{out}"
+        out.contains("epoch") && out.contains("AGENTS.md"),
+        "adopt prints the real instruction set: {out}"
     );
     // check passes afterwards.
     let (c2, out2, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
