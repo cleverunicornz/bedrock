@@ -230,10 +230,21 @@ fn install_seed(seed: &Path, target: &Path) -> Result<(), Fatal> {
         }
     }
 
+    // 0.2.1 provenance: stamp the seed-copied floor content — definition/
+    // floor vertices get `# seeded by bedrock vX` only (repos own their
+    // situation; never a do-not-edit), playbooks installed from the
+    // skeleton's references/ get the full machine-owned header.
+    stamp_installed_floor(&skeleton, target)?;
+
     // Copy the rest of seed/ → target/seed/ verbatim: schemas/, the context,
     // any floor vertices, and the workflow template directory.
     let seed_dst = target.join("seed");
     copy_dir(seed, &seed_dst)?;
+    // 0.2.1 provenance: stamp the installed base files under target/seed/
+    // (schemas `$comment`, context `#`) so a template seed yields canonical
+    // stamped bytes; idempotent when the seed already carries the current
+    // version's stamp.
+    stamp_installed_seed(target)?;
     install_gitignore(seed, target)?;
     promote_workflow(target, &seed_dst)?;
     // 0.2.0 base protocol: install the operating reference (digest-guarded by
@@ -242,6 +253,75 @@ fn install_seed(seed: &Path, target: &Path) -> Result<(), Fatal> {
 
     // Generate the consumer's first graph.trig/AGENTS.md is deferred to
     // `finalize_and_verify`, which runs after the epoch record exists.
+    Ok(())
+}
+
+/// Sorted names of regular files directly under `dir` (enumerates what the
+/// skeleton just installed, so only seed-copied content is stamped — never
+/// repo-authored vertices).
+fn sorted_file_names(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    names
+}
+
+/// Stamp the floor content the skeleton just installed into
+/// `target/situation/`: definition/ floor vertices get a one-line
+/// `# seeded by bedrock vX` (repo content agents extend around — never a
+/// do-not-edit), playbooks in references/ get the full provenance header.
+fn stamp_installed_floor(skeleton: &Path, target: &Path) -> Result<(), Fatal> {
+    use crate::provenance::Kind;
+    let src_def = skeleton.join("definition");
+    let dst_def = target.join("situation").join("definition");
+    if src_def.is_dir() && dst_def.is_dir() {
+        for name in sorted_file_names(&src_def) {
+            if name.ends_with(".yamlld") {
+                let p = dst_def.join(&name);
+                if p.is_file() {
+                    crate::provenance::stamp_path(Kind::Seed, &p)?;
+                }
+            }
+        }
+    }
+    let src_ref = skeleton.join("references");
+    let dst_ref = target.join("situation").join("references");
+    if src_ref.is_dir() && dst_ref.is_dir() {
+        for name in sorted_file_names(&src_ref) {
+            if name.ends_with(".md") {
+                let p = dst_ref.join(&name);
+                if p.is_file() {
+                    crate::provenance::stamp_path(Kind::Hash, &p)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Stamp the installed base files under `target/seed/`: the namespace
+/// schemas (`"$comment"` key) and the repo-local context (`#` header).
+fn stamp_installed_seed(target: &Path) -> Result<(), Fatal> {
+    use crate::provenance::Kind;
+    for ns in crate::contextreg::GRAPH_NAMESPACES {
+        let p = target
+            .join("seed")
+            .join("schemas")
+            .join(format!("{ns}.json"));
+        if p.is_file() {
+            crate::provenance::stamp_path(Kind::Json, &p)?;
+        }
+    }
+    let ctx = target.join("seed").join("context.yamlld");
+    if ctx.is_file() {
+        crate::provenance::stamp_path(Kind::Hash, &ctx)?;
+    }
     Ok(())
 }
 
@@ -292,6 +372,9 @@ fn promote_workflow(target: &Path, seed_dst: &Path) -> Result<(), Fatal> {
         let dst = wf_dir.join(name);
         std::fs::copy(&src, &dst)
             .map_err(|e| Fatal(format!("cannot install workflow {}: {e}", dst.display())))?;
+        // 0.2.1 provenance: the promoted workflow declares itself
+        // machine-owned and names `bedrock update` as the refresh.
+        crate::provenance::stamp_path(crate::provenance::Kind::Hash, &dst)?;
         // The installed seed/ copy is a template, not a live workflow: drop
         // it once promoted so the consumer repo has exactly one instance.
         let _ = std::fs::remove_file(&src);
@@ -337,43 +420,18 @@ fn collect_workflow_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Write the operating reference (0.2.0 base protocol) verbatim from the
-/// compile-time constant, so `bedrock check` C10 — which compares the
-/// installed file against the same embedded bytes — passes by construction.
+/// Write the operating reference (0.2.1 base protocol) in canonical stamped
+/// form from the compile-time constant, so `bedrock check` C10 — which
+/// compares the installed file against the same canonical stamped bytes —
+/// passes by construction.
 fn install_operating_reference(target: &Path) -> Result<(), Fatal> {
     let bytes = include_str!("embedded/bedrock-operating.md").as_bytes();
     let dest = target.join(crate::contextreg::OPERATING_REF_PATH);
-    if let Ok(existing) = std::fs::read(&dest) {
-        if existing == bytes {
-            return Ok(());
-        }
+    let wrote = crate::provenance::write_stamped(crate::provenance::Kind::Hash, &dest, bytes)?;
+    if wrote {
+        println!("bedrock: installed situation/references/bedrock-operating.md");
     }
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| Fatal(format!("cannot create {}: {e}", parent.display())))?;
-    }
-    std::fs::write(&dest, bytes)
-        .map_err(|e| Fatal(format!("cannot write {}: {e}", dest.display())))?;
-    println!("bedrock: installed situation/references/bedrock-operating.md");
     Ok(())
-}
-
-/// Write `bytes` to `<target>/<rel>` when absent or differing; true when it
-/// wrote. `bedrock update` refreshes the installed base files through this.
-fn write_installed_base(target: &Path, bytes: &[u8], rel: &str) -> Result<bool, Fatal> {
-    let dest = target.join(rel);
-    if let Ok(existing) = std::fs::read(&dest) {
-        if existing == bytes {
-            return Ok(false);
-        }
-    }
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| Fatal(format!("cannot create {}: {e}", parent.display())))?;
-    }
-    std::fs::write(&dest, bytes)
-        .map_err(|e| Fatal(format!("cannot write {}: {e}", dest.display())))?;
-    Ok(true)
 }
 
 /// Promote the embedded workflow template only when the consumer has none.
@@ -399,6 +457,8 @@ fn install_workflow_if_missing(target: &Path, embedded_seed: &Path) -> Result<us
         }
         std::fs::copy(&src, &dst)
             .map_err(|e| Fatal(format!("cannot install workflow {}: {e}", dst.display())))?;
+        // 0.2.1 provenance: machine-owned header on the installed template.
+        crate::provenance::stamp_path(crate::provenance::Kind::Hash, &dst)?;
         installed += 1;
     }
     Ok(installed)
@@ -421,7 +481,12 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
         let src = seed.join("schemas").join(format!("{ns}.json"));
         let bytes =
             std::fs::read(&src).map_err(|e| Fatal(format!("cannot read embedded {rel}: {e}")))?;
-        if write_installed_base(target, &bytes, &rel)? {
+        // Canonical stamped form for the current version (C10 coherence).
+        if crate::provenance::write_stamped(
+            crate::provenance::Kind::Json,
+            &target.join(&rel),
+            &bytes,
+        )? {
             changed.push(rel);
         }
     }
@@ -429,12 +494,20 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
     let ctx = seed.join("context.yamlld");
     let bytes = std::fs::read(&ctx)
         .map_err(|e| Fatal(format!("cannot read embedded seed/context.yamlld: {e}")))?;
-    if write_installed_base(target, &bytes, "seed/context.yamlld")? {
+    if crate::provenance::write_stamped(
+        crate::provenance::Kind::Hash,
+        &target.join("seed/context.yamlld"),
+        &bytes,
+    )? {
         changed.push("seed/context.yamlld".to_string());
     }
     // operating reference
     let op_bytes = include_str!("embedded/bedrock-operating.md").as_bytes();
-    if write_installed_base(target, op_bytes, crate::contextreg::OPERATING_REF_PATH)? {
+    if crate::provenance::write_stamped(
+        crate::provenance::Kind::Hash,
+        &target.join(crate::contextreg::OPERATING_REF_PATH),
+        op_bytes,
+    )? {
         changed.push(crate::contextreg::OPERATING_REF_PATH.to_string());
     }
     // workflow template (install if missing; consumer copy left untouched)

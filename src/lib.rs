@@ -11,5 +11,6 @@ pub mod embedded;
 pub mod errors;
 pub mod generate;
 pub mod install;
+pub mod provenance;
 pub mod schema;
 pub mod yamlsyntax;

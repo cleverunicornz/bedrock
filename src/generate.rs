@@ -113,6 +113,14 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
     paths.dedup();
 
     let mut out = String::new();
+    // 0.2.1 provenance: the register announces it is machine-owned on its
+    // first line; the generator-version terminal marker stays at the foot.
+    out.push_str(&crate::provenance::header(
+        crate::provenance::Kind::Html,
+        env!("CARGO_PKG_VERSION"),
+    ));
+    out.push('\n');
+
     // 1. Title.
     match &identity {
         Some((label, stmt)) if !stmt.trim().is_empty() => {
