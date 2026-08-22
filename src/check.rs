@@ -364,8 +364,15 @@ fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
             let p = e.path();
             let name = e.file_name().to_str().unwrap_or_default().to_string();
             if p.is_dir() {
-                // do not descend into target/ or .git or vendored dirs
+                // do not descend into target/, .git, or quarantined test rigs:
+                // fixtures are rig material (they plant deliberate violations
+                // to test the rules) and never carry repo law.
                 if name == ".git" || name == "target" {
+                    continue;
+                }
+                if name == "fixtures"
+                    && dir.file_name().and_then(|n| n.to_str()) == Some("tests")
+                {
                     continue;
                 }
                 stack.push(p);

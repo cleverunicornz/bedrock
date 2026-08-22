@@ -1,0 +1,110 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix bedrock: <https://yeetz.dev/bedrock/> .
+@prefix graph: <https://yeetz.dev/graph/> .
+graph:architecture {
+	bedrock:vertex\/bedrock a bedrock:ontology\/Identity ;
+		bedrock:label "bedrock" ;
+		bedrock:path bedrock:path\/seed , bedrock:path\/situation , bedrock:path\/spec ;
+		bedrock:role "identity" ;
+		bedrock:statement "bedrock is a single Rust binary (crate yeetz-bedrock) that seeds a repo with a YAML-LD situation, checks the situation, and compiles it into one generated AGENTS.md register plus a deterministic TriG graph.\n" .
+}
+graph:definition {
+	bedrock:vertex\/breadcrumb-adversarial-review a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "Adversarial review is human-invoked: expansive review, hard debug, hard code review — never a silent retry against the same failure.\n" ;
+		bedrock:label "Adversarial review" ;
+		bedrock:source bedrock:path\/situation\/references\/review-playbook.md .
+	bedrock:vertex\/breadcrumb-external-source-research a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "Read the checked-out clone (shared bank at $YEETZ_EXTERNAL_REPOS, <owner>-<repo>, pull --ff-only), not docs.\n" ;
+		bedrock:label "External source research" .
+	bedrock:vertex\/breadcrumb-org-crate-manifest a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "Check the org's published-crates manifest before reaching for a third-party or writing new (gap: not yet published; proposed home: the bootstrap repo).\n" ;
+		bedrock:label "Org crate manifest" .
+	bedrock:vertex\/breadcrumb-rollout-runners a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "Rollout and runners are Ansible owned by gh-runners (roles/inventory/ toolchain manifest); the performance topology there is human-gated.\n" ;
+		bedrock:label "Rollout & runners" .
+	bedrock:vertex\/breadcrumb-settings-poison-guard a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "A merged branch's agent-settings file is never accepted (merge=ours).\n" ;
+		bedrock:label "Settings poison guard" .
+	bedrock:vertex\/breadcrumb-spike-rig a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "When a question needs a build: quarantine it, timebox it, predeclare criteria before the rig answers them.\n" ;
+		bedrock:label "Spike rig" ;
+		bedrock:source bedrock:path\/situation\/references\/spike-playbook.md .
+	bedrock:vertex\/breadcrumb-storage-classification a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "Ephemeral-test default: fresh bucket + scoped key, torn down on exit; retention needs a named owner and lifetime.\n" ;
+		bedrock:label "Storage classification" .
+	bedrock:vertex\/breadcrumb-structural-search a bedrock:ontology\/Breadcrumb ;
+		bedrock:gate "ast-grep preferred where provisioned; it is blind to macros/codegen — an empty structural result is never evidence of absence.\n" ;
+		bedrock:label "Structural search" .
+	bedrock:vertex\/invariant-01-possibility-space a bedrock:ontology\/Invariant ;
+		bedrock:label "Code is a possibility space" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Code is a possibility space. A surface does everything it *can* do, not what its author meant. Work is collapsing possibilities to defined behavior. A green test proves a behavior exists — never that nothing else happens. Say what else could happen; declare what you did not collapse.\n" .
+	bedrock:vertex\/invariant-02-gap-suspects a bedrock:ontology\/Invariant ;
+		bedrock:label "A gap has three suspects" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "A gap has three suspects — the code, the requirement, or the instrument. Interrogate in the open before displacing any of them.\n" .
+	bedrock:vertex\/invariant-03-situate-before-acting a bedrock:ontology\/Invariant ;
+		bedrock:label "Situate before acting; re-situate after" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Situate before acting; re-situate after. Relationships carry unequal mass; the loudest, freshest signal is usually the smallest. Interrogate a contradiction before displacing what it contradicts. Authority attaches to landed sentences, not to your readings of them.\n" .
+	bedrock:vertex\/invariant-04-completion-boundary a bedrock:ontology\/Invariant ;
+		bedrock:label "Completion is behavior at the promised boundary" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Completion is behavior at the promised boundary. Nothing in a deliverable is a stub, placeholder, or deferred branch. Not done: \"compiles\", \"structure in place\", \"foundation for later.\"\n" .
+	bedrock:vertex\/invariant-05-make-it-first a bedrock:ontology\/Invariant ;
+		bedrock:label "Make it first, prove it after" ;
+		bedrock:layer "floor" ;
+		bedrock:references bedrock:vertex\/breadcrumb-adversarial-review ;
+		bedrock:statement "Make it first, prove it after. Build the slice, prove it, fix, continue. Teardown on demand, never a precondition. Deep adversarial review is human-invoked.\n" .
+	bedrock:vertex\/invariant-06-regenerate-from-source a bedrock:ontology\/Invariant ;
+		bedrock:label "Verify by regenerating from source" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Verify by regenerating from source, never by reading the claim. Gate claims cite a CI run URL, never a local attestation.\n" .
+	bedrock:vertex\/invariant-07-predeclare-criteria a bedrock:ontology\/Invariant ;
+		bedrock:label "Predeclare criteria" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Predeclare criteria before the run that answers them; judge results only against them. A refuted hypothesis is a successful experiment. Mixed outcomes stay mixed — never round toward a verdict. Timebox exploration; when the decision point arrives, resolve with what you have.\n" .
+	bedrock:vertex\/invariant-08-dependency-boundary a bedrock:ontology\/Invariant ;
+		bedrock:label "The dependency boundary is the assurance boundary" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "The dependency boundary is the assurance boundary. What crosses it version-pinned is assured-by-default at that pin; you verify your *consumption*, never the dependency's internals — the same law root already held for adopted protocols (S3, Matrix, Git), generalized to every crate boundary. Pins are assured versions; bumps are deliberate acts. A missing capability at a consumed boundary is BLOCKING — stop and escalate; working around a boundary is the disqualifying failure.\n" .
+	bedrock:vertex\/invariant-09-public-first a bedrock:ontology\/Invariant ;
+		bedrock:label "Public-first" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Public-first. Before building inside, ask why this cannot be a public crate or repo; work backwards from that. Extract when the rubric passes; private only for named domain knowledge or secrets.\n" .
+	bedrock:vertex\/invariant-10-git-rules a bedrock:ontology\/Invariant ;
+		bedrock:label "Git: force push does not exist" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Git: force push does not exist; nothing pushed is deleted; one writer per ref; PRs always — a human merges the default branch. Same policy in every repo.\n" .
+	bedrock:vertex\/invariant-11-ci-rules a bedrock:ontology\/Invariant ;
+		bedrock:label "CI: one runner posture, the real suite" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "CI: every Linux/platform-neutral job runs on `org-ci-linux-x64`; WarpBuild only for native macOS/Windows artifacts (`warp-macos-15-arm64-6x`, `warp-windows-latest-x64-4x`); fork-PR code is mechanically rejected before runner assignment; a missing host tool is a P0 infrastructure defect — never install a hidden substitute; CI runs the real suite (fmt, clippy `-D warnings`, locked build, nextest).\n" .
+	bedrock:vertex\/invariant-12-toolchain a bedrock:ontology\/Invariant ;
+		bedrock:label "One fixed toolchain per repo" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "One fixed toolchain per repo, canonical task names; never invent a second one.\n" .
+	bedrock:vertex\/invariant-13-state a bedrock:ontology\/Invariant ;
+		bedrock:label "State: one storage truth through the kernel" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "State: one storage truth through the kernel; records are immutable, created by conditional write; pointers move by CAS; every projection is rebuildable from records; reads are fenced; an integrity failure is never translated to absence.\n" .
+	bedrock:vertex\/invariant-14-tailscale-first a bedrock:ontology\/Invariant ;
+		bedrock:label "Tailscale-first" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Tailscale-first: all internal reach rides the tailnet; SSH-over-Tailscale for operators; nothing internal is served outside it; public-IP access is break-glass only.\n" .
+	bedrock:vertex\/invariant-15-decisions-append-only a bedrock:ontology\/Invariant ;
+		bedrock:label "Decisions are append-only" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "Decisions are append-only: ADRs are immutable — supersede, never edit.\n" .
+	bedrock:vertex\/invariant-16-agents-md-register a bedrock:ontology\/Invariant ;
+		bedrock:label "AGENTS.md is the register" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "AGENTS.md is the register: one screen of numbered invariants + \"where things live\" (graph epoch: generated from `situation/`, never hand-edited). After work that changes reality, re-situate it — emit knowledge, never rules.\n" .
+}
+graph:architecture {
+	bedrock:vertex\/situation-structure a bedrock:ontology\/SituationStructure ;
+		bedrock:label "The situation structure" ;
+		bedrock:path bedrock:path\/situation\/architecture , bedrock:path\/situation\/definition , bedrock:path\/situation\/plan , bedrock:path\/situation\/record , bedrock:path\/situation\/references , bedrock:path\/situation\/risk ;
+		bedrock:statement "situation/ is the repo's law and memory: six flat namespace directories (definition, architecture, risk, plan, record, references) holding YAML-LD vertices that bedrock check validates and build compiles into the register.\n" .
+}

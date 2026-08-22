@@ -1,0 +1,47 @@
+# repo — bedrock is a single Rust binary (crate yeetz-bedrock) that seeds a repo with a YAML-LD situation, checks the situation, and compiles it into one generated AGENTS.md register plus a deterministic TriG graph.
+
+## Invariants — breaking any of these is wrong, whatever else is right
+
+1. Code is a possibility space. A surface does everything it *can* do, not what its author meant. Work is collapsing possibilities to defined behavior. A green test proves a behavior exists — never that nothing else happens. Say what else could happen; declare what you did not collapse.
+2. A gap has three suspects — the code, the requirement, or the instrument. Interrogate in the open before displacing any of them.
+3. Situate before acting; re-situate after. Relationships carry unequal mass; the loudest, freshest signal is usually the smallest. Interrogate a contradiction before displacing what it contradicts. Authority attaches to landed sentences, not to your readings of them.
+4. Completion is behavior at the promised boundary. Nothing in a deliverable is a stub, placeholder, or deferred branch. Not done: "compiles", "structure in place", "foundation for later."
+5. Make it first, prove it after. Build the slice, prove it, fix, continue. Teardown on demand, never a precondition. Deep adversarial review is human-invoked.
+6. Verify by regenerating from source, never by reading the claim. Gate claims cite a CI run URL, never a local attestation.
+7. Predeclare criteria before the run that answers them; judge results only against them. A refuted hypothesis is a successful experiment. Mixed outcomes stay mixed — never round toward a verdict. Timebox exploration; when the decision point arrives, resolve with what you have.
+8. The dependency boundary is the assurance boundary. What crosses it version-pinned is assured-by-default at that pin; you verify your *consumption*, never the dependency's internals — the same law root already held for adopted protocols (S3, Matrix, Git), generalized to every crate boundary. Pins are assured versions; bumps are deliberate acts. A missing capability at a consumed boundary is BLOCKING — stop and escalate; working around a boundary is the disqualifying failure.
+9. Public-first. Before building inside, ask why this cannot be a public crate or repo; work backwards from that. Extract when the rubric passes; private only for named domain knowledge or secrets.
+10. Git: force push does not exist; nothing pushed is deleted; one writer per ref; PRs always — a human merges the default branch. Same policy in every repo.
+11. CI: every Linux/platform-neutral job runs on `org-ci-linux-x64`; WarpBuild only for native macOS/Windows artifacts (`warp-macos-15-arm64-6x`, `warp-windows-latest-x64-4x`); fork-PR code is mechanically rejected before runner assignment; a missing host tool is a P0 infrastructure defect — never install a hidden substitute; CI runs the real suite (fmt, clippy `-D warnings`, locked build, nextest).
+12. One fixed toolchain per repo, canonical task names; never invent a second one.
+13. State: one storage truth through the kernel; records are immutable, created by conditional write; pointers move by CAS; every projection is rebuildable from records; reads are fenced; an integrity failure is never translated to absence.
+14. Tailscale-first: all internal reach rides the tailnet; SSH-over-Tailscale for operators; nothing internal is served outside it; public-IP access is break-glass only.
+15. Decisions are append-only: ADRs are immutable — supersede, never edit.
+16. AGENTS.md is the register: one screen of numbered invariants + "where things live" (graph epoch: generated from `situation/`, never hand-edited). After work that changes reality, re-situate it — emit knowledge, never rules.
+
+## Breadcrumbs
+
+- A merged branch's agent-settings file is never accepted (merge=ours).
+- Adversarial review is human-invoked: expansive review, hard debug, hard code review — never a silent retry against the same failure.: situation/references/review-playbook.md
+- Check the org's published-crates manifest before reaching for a third-party or writing new (gap: not yet published; proposed home: the bootstrap repo).
+- Ephemeral-test default: fresh bucket + scoped key, torn down on exit; retention needs a named owner and lifetime.
+- Read the checked-out clone (shared bank at $YEETZ_EXTERNAL_REPOS, <owner>-<repo>, pull --ff-only), not docs.
+- Rollout and runners are Ansible owned by gh-runners (roles/inventory/ toolchain manifest); the performance topology there is human-gated.
+- When a question needs a build: quarantine it, timebox it, predeclare criteria before the rig answers them.: situation/references/spike-playbook.md
+- ast-grep preferred where provisioned; it is blind to macros/codegen — an empty structural result is never evidence of absence.
+
+## Where things live
+
+- Adversarial review: situation/references/review-playbook.md
+- Spike rig: situation/references/spike-playbook.md
+- The situation structure: situation/architecture
+- The situation structure: situation/definition
+- The situation structure: situation/plan
+- The situation structure: situation/record
+- The situation structure: situation/references
+- The situation structure: situation/risk
+- bedrock: seed
+- bedrock: situation
+- bedrock: spec
+
+<!-- bedrock 0.1.0 digest 63959283e425691f7a5a78ddd0da2534598aa62358276145c083ef28f05848fc (regenerated by `bedrock build`; hand edits are detected and rejected by `bedrock check`) -->
