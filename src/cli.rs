@@ -16,6 +16,9 @@ Usage:
                                      `RULE path:line message` per violation.
   bedrock build  [DIR]               check, then compile situation/graph.trig + situation/plan/*.trig
                                      and regenerate the root AGENTS.md. Fails if check fails.
+  bedrock update [DIR]               refresh the installed base files (schemas, context, operating
+                                     reference, missing workflow template) from this binary's embedded
+                                     copies; print exactly what changed; then run check + build.
   bedrock help                       this contract, short.
   bedrock --version / -V             print version.
 
@@ -32,6 +35,7 @@ pub enum Command {
     Adopt { dir: PathBuf, offline: bool },
     Check { dir: PathBuf },
     Build { dir: PathBuf },
+    Update { dir: PathBuf },
     Help,
     Version,
 }
@@ -74,6 +78,7 @@ pub fn parse(args: &[String]) -> Result<Command, Fatal> {
         Some("adopt") => Ok(Command::Adopt { dir, offline }),
         Some("check") => Ok(Command::Check { dir }),
         Some("build") => Ok(Command::Build { dir }),
+        Some("update") => Ok(Command::Update { dir }),
         Some("help") => Ok(Command::Help),
         Some(other) => Err(Fatal(format!(
             "unknown command `{other}`; try `bedrock help`"
@@ -113,6 +118,10 @@ pub fn run(cmd: Command) -> Result<i32, Fatal> {
         }
         Command::Build { dir } => {
             crate::install::build(&dir)?;
+            Ok(0)
+        }
+        Command::Update { dir } => {
+            crate::install::update(&dir)?;
             Ok(0)
         }
     }

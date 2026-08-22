@@ -1,0 +1,7 @@
+# C9 bad: a repo archetype alone, no base @type -> violation.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/archetype"
+"@type":
+  - "https://yeetz.dev/myrepo/ADR"
+label: "Archetype alone"
+statement: "No base type rides with this repo archetype."

@@ -9,7 +9,10 @@ nested `AGENTS.md`. After your next commit, bedrock governs this repo.
 `situation/record/epoch-<utc-date>-<short-sha>.yamlld` fixes the cut line:
 after it, bedrock governs. Prior history — including the old AGENTS.md — is
 reference, never law. Root `AGENTS.md` is generated law: floor invariants,
-repo-local, breadcrumbs, where things live. Never hand-edit it.
+repo-local, breadcrumbs, where things live. Never hand-edit it. The base
+protocol lives at `situation/references/bedrock-operating.md` — the CHAIN
+(promise, oracle, witness, residual), the ontology, every rule. Read it
+before converting donor content.
 
 ## 2. Convert donor content, forward-only
 

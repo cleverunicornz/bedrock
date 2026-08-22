@@ -1,0 +1,17 @@
+# C8 good: disposition done WITH a witness -> passes.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-done"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Witnessed plan"
+intent: "A plan that is done with a witness."
+acceptanceCriteria:
+  - "The plan compiles."
+consumes:
+  - "https://yeetz.dev/bedrock/vertex/invariant-01"
+tasks:
+  - "Run bedrock build."
+witnesses:
+  - "https://github.com/org/repo/actions/runs/42"
+disposition:
+  state: done
+  residual: "Nothing else was in scope."

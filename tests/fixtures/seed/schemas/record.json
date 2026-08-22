@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yeetz.dev/bedrock/schema/record/v1",
+  "$id": "https://yeetz.dev/bedrock/schema/record/v2",
   "title": "Bedrock record namespace vertex schema",
-  "description": "Epoch records, deploy placements, and reflect verdicts (SPINE §4 C4 minimum-vertex rule). The EpochRecord shape models SPINE §6: commit SHA of the cut, bedrock version (+ optional --offline stamp), mode, and a one-line statement. Validates every situation/record/*.yamlld vertex.",
+  "description": "Epoch records, deploy placements, and reflect verdicts (0.2.0 base protocol). DeployRecord is digest-pinned — it records what was actually placed, never a 'latest' pointer. ReflectVerdict carries subject, criteria, witnesses, findings (optional suspect: code|promise|instrument), disposition+residual. Validates every situation/record/*.yamlld vertex.",
   "type": "object",
   "additionalProperties": false,
   "required": ["@context", "@id", "@type"],
@@ -16,6 +16,24 @@
     "version": { "$ref": "#/$defs/version" },
     "offline": { "type": "boolean", "$comment": "true stamps that --offline was used (SPINE §1 / §6 version gate)" },
     "mode": { "enum": ["init", "adopt"] },
+    "artifactDigest": { "$ref": "#/$defs/artifactDigest", "$comment": "sha256 of the placed artifact — digest-pinned, never 'latest'" },
+    "destination": { "$ref": "#/$defs/boundedText", "$comment": "where the artifact was placed" },
+    "config": { "$ref": "#/$defs/pointer", "$comment": "reference to the config that produced the artifact" },
+    "result": { "$ref": "#/$defs/boundedText", "$comment": "what the placement returned" },
+    "timestamp": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}" },
+    "subject": { "$ref": "#/$defs/vertexPointer", "$comment": "ReflectVerdict: the vertex being judged" },
+    "criteria": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/boundedText" }, "$comment": "ReflectVerdict: the criteria the subject was judged against" },
+    "witnesses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/witness" }, "$comment": "CI-run-URL class; rule C8: disposition done with zero witnesses is a violation" },
+    "findings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/finding" } },
+    "disposition": {
+      "type": "object",
+      "properties": {
+        "state": { "enum": ["draft", "active", "done", "abandoned"] },
+        "residual": { "$ref": "#/$defs/boundedText" }
+      },
+      "required": ["state"],
+      "additionalProperties": false
+    },
     "requires": { "$ref": "#/$defs/vertexPointer" },
     "references": { "$ref": "#/$defs/vertexPointerList" },
     "consumes": { "$ref": "#/$defs/pointerList" },
@@ -27,16 +45,25 @@
   "minProperties": 3,
   "allOf": [
     {
-      "if": { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/EpochRecord" } }, "required": ["@type"] },
+      "if": { "anyOf": [
+        { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/EpochRecord" } } },
+        { "properties": { "@type": { "type": "array", "contains": { "const": "https://yeetz.dev/bedrock/ontology/EpochRecord" } } } }
+      ], "required": ["@type"] },
       "then": { "required": ["commit", "version", "mode", "statement"] }
     },
     {
-      "if": { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/DeployPlacement" } }, "required": ["@type"] },
-      "then": { "anyOf": [{ "required": ["label"] }, { "required": ["statement"] }] }
+      "if": { "anyOf": [
+        { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/DeployRecord" } } },
+        { "properties": { "@type": { "type": "array", "contains": { "const": "https://yeetz.dev/bedrock/ontology/DeployRecord" } } } }
+      ], "required": ["@type"] },
+      "then": { "required": ["artifactDigest", "destination", "config", "result", "timestamp"] }
     },
     {
-      "if": { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/ReflectVerdict" } }, "required": ["@type"] },
-      "then": { "anyOf": [{ "required": ["label"] }, { "required": ["statement"] }] }
+      "if": { "anyOf": [
+        { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/ReflectVerdict" } } },
+        { "properties": { "@type": { "type": "array", "contains": { "const": "https://yeetz.dev/bedrock/ontology/ReflectVerdict" } } } }
+      ], "required": ["@type"] },
+      "then": { "required": ["subject", "criteria"] }
     }
   ],
   "anyOf": [{ "required": ["label"] }, { "required": ["statement"] }],
@@ -46,6 +73,17 @@
     "boundedText": { "type": "string", "minLength": 1, "maxLength": 4096 },
     "gitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$" },
+    "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "witness": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^https://[^\\s]+$", "$comment": "CI-run-URL class, never a local attestation" },
+    "finding": {
+      "type": "object",
+      "properties": {
+        "statement": { "$ref": "#/$defs/boundedText" },
+        "suspect": { "enum": ["code", "promise", "instrument"] }
+      },
+      "required": ["statement"],
+      "additionalProperties": false
+    },
     "pathPointer": { "type": "string", "pattern": "^https://yeetz\\.dev/bedrock/path/[A-Za-z0-9._/\\-]+$" },
     "vertexPointer": { "type": "string", "pattern": "^https://yeetz\\.dev/bedrock/vertex/[a-z0-9][a-z0-9-]*$" },
     "vertexPointerList": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/vertexPointer" } },
@@ -53,11 +91,20 @@
     "pointerList": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/pointer" } },
     "pathPointerList": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/pathPointer" } },
     "type": {
-      "type": "string",
-      "enum": [
-        "https://yeetz.dev/bedrock/ontology/EpochRecord",
-        "https://yeetz.dev/bedrock/ontology/DeployPlacement",
-        "https://yeetz.dev/bedrock/ontology/ReflectVerdict"
+      "description": "one base type scalar, or an array with at least one base type (repo archetypes ride alongside; rule C9)",
+      "oneOf": [
+        { "type": "string", "enum": [
+          "https://yeetz.dev/bedrock/ontology/EpochRecord",
+          "https://yeetz.dev/bedrock/ontology/DeployRecord",
+          "https://yeetz.dev/bedrock/ontology/ReflectVerdict"
+        ] },
+        { "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^https://[^\\s]+$" },
+          "contains": { "enum": [
+            "https://yeetz.dev/bedrock/ontology/EpochRecord",
+            "https://yeetz.dev/bedrock/ontology/DeployRecord",
+            "https://yeetz.dev/bedrock/ontology/ReflectVerdict"
+          ] } }
       ]
     }
   }

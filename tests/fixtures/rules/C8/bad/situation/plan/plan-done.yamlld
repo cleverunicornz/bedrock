@@ -1,0 +1,15 @@
+# C8 bad: disposition done with ZERO witnesses -> violation.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-done"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Unwitnessed done plan"
+intent: "A plan claimed done with no witness at all."
+acceptanceCriteria:
+  - "The plan compiles."
+consumes:
+  - "https://yeetz.dev/bedrock/vertex/invariant-01"
+tasks:
+  - "Run bedrock build."
+disposition:
+  state: done
+  residual: "This should trip the witness gate."
