@@ -7,6 +7,7 @@ pub mod check;
 pub mod cli;
 pub mod compile;
 pub mod contextreg;
+pub mod embedded;
 pub mod errors;
 pub mod generate;
 pub mod install;

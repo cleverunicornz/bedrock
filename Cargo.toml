@@ -1,11 +1,20 @@
 [package]
 name = "yeetz-bedrock"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 description = "bedrock — compile an org's situation/ graph into a deterministic TriG register and AGENTS.md projection"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/cleverunicornz/bedrock"
+readme = "README.md"
+keywords = ["yaml-ld", "trig", "rdf", "agents", "knowledge-graph"]
+categories = ["command-line-utilities", "development-tools"]
 # crates.io name `bedrock` is squatted (2018 Vulkan glue); see spec/donor-ld-research.md.
+
+# Publish whitelist (package hygiene): only these ship on crates.io. Cargo
+# always adds Cargo.lock (binary crate) and mandatory Cargo.toml; spec/,
+# situation/, tests/, .github are intentionally excluded.
+include = ["src/**", "seed/**", "Cargo.toml", "README.md", "LICENSE-MIT", "LICENSE-APACHE"]
 
 [[bin]]
 name = "bedrock"
@@ -26,6 +35,7 @@ oxrdf = "=0.3.3"           # quad data model
 oxttl = "=0.2.3"           # TriGSerializer
 jsonschema = "=0.50.0"     # namespace schemas (SPINE §4 C4)
 sha2 = "=0.11.0"           # source digests
+include_dir = "=0.7.4"     # embeds the seed/ tree at compile time (SPINE §1 embedded seed; W1 fix for cargo-installed binaries)
 # Direct pin of serde_norway's underlying YAML tokenizer (already its dependency):
 # C2 forbids anchors/aliases/merge-keys at YAML-syntax level (SPINE §4; W2 floor
 # vertices contain markdown emphasis like *can* inside block scalars, so text
