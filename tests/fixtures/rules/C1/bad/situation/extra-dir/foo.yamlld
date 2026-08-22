@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/foo"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "stray"
+layer: floor
+statement: "stray"

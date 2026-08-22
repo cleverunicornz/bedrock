@@ -1,0 +1,10 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/edges"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "resolvable edges"
+layer: floor
+statement: "Every edge below resolves: one vertex, one repo path."
+references:
+  - "https://yeetz.dev/bedrock/vertex/peer"
+path:
+  - "https://yeetz.dev/bedrock/path/situation/references/howto.md"

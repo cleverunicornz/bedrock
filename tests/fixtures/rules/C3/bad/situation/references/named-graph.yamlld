@@ -1,0 +1,8 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/graph/execution/arbitrary"
+"@graph":
+  - "@id": "https://yeetz.dev/bedrock/vertex/named-graph"
+    "@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+    label: "graph mismatch"
+    layer: floor
+    statement: "bad"

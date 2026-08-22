@@ -1,0 +1,11 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-a"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Plan A"
+intent: "A trivial plan fixture that projects to plan-a.trig."
+acceptanceCriteria:
+  - "The plan compiles."
+consumes:
+  - "https://yeetz.dev/bedrock/vertex/invariant-01"
+tasks:
+  - "Run bedrock build."

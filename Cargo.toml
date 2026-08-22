@@ -1,0 +1,37 @@
+[package]
+name = "yeetz-bedrock"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "bedrock — compile an org's situation/ graph into a deterministic TriG register and AGENTS.md projection"
+license = "MIT OR Apache-2.0"
+# crates.io name `bedrock` is squatted (2018 Vulkan glue); see spec/donor-ld-research.md.
+
+[[bin]]
+name = "bedrock"
+path = "src/main.rs"
+
+[lib]
+name = "bedrock"
+path = "src/lib.rs"
+
+[dependencies]
+# Exact pins are law (SPINE §5): asseurement boundary — bumps are deliberate acts.
+# `serde` itself is intentionally unpinned: it is a shared transitive of the whole
+# ecosystem, not a pipeline-stack component; exact-pinning it breaks resolution.
+serde_json = "=1.0.151"
+serde_norway = "=0.9.42"   # YAML 1.2, serde-norway profile (SPINE §5)
+oxjsonld = "=0.2.5"        # JSON-LD 1.1 processor; remote context loading disabled
+oxrdf = "=0.3.3"           # quad data model
+oxttl = "=0.2.3"           # TriGSerializer
+jsonschema = "=0.50.0"     # namespace schemas (SPINE §4 C4)
+sha2 = "=0.11.0"           # source digests
+# Direct pin of serde_norway's underlying YAML tokenizer (already its dependency):
+# C2 forbids anchors/aliases/merge-keys at YAML-syntax level (SPINE §4; W2 floor
+# vertices contain markdown emphasis like *can* inside block scalars, so text
+# regex scanning is forbidden). serde_norway resolves anchors internally and
+# exposes no syntax API, so we scan tokens directly.
+unsafe-libyaml-norway = "=0.2.15"
+
+[profile.release]
+lto = true

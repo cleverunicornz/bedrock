@@ -1,0 +1,10 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/dangling"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "dangling edges"
+layer: floor
+statement: "Below: one missing vertex, one missing path."
+references:
+  - "https://yeetz.dev/bedrock/vertex/ghost"
+path:
+  - "https://yeetz.dev/bedrock/path/does-not-exist.md"

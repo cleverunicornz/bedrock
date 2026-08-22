@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/peer"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "peer"
+layer: floor
+statement: "A resolvable peer vertex."

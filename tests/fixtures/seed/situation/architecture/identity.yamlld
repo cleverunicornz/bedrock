@@ -1,0 +1,9 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/identity"
+"@type": "https://yeetz.dev/bedrock/ontology/Identity"
+label: "bedrock"
+role: identity
+statement: "the situation/ graph compiler that turns YAML-LD vertices into a deterministic register"
+path:
+  - "https://yeetz.dev/bedrock/path/situation/definition/invariant-01.yamlld"
+  - "https://yeetz.dev/bedrock/path/situation/definition/invariant-02.yamlld"
