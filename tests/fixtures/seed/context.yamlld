@@ -51,3 +51,43 @@
     "@id": "https://yeetz.dev/bedrock/path"
     "@type": "@id"
     "@container": "@set"
+  # plan + record fields (0.2.0 base protocol)
+  intent:
+    "@id": "https://yeetz.dev/bedrock/intent"
+  acceptanceCriteria:
+    "@id": "https://yeetz.dev/bedrock/acceptance-criteria"
+    "@container": "@set"
+  tasks:
+    "@id": "https://yeetz.dev/bedrock/tasks"
+    "@container": "@set"
+  witnesses:
+    "@id": "https://yeetz.dev/bedrock/witnesses"
+    "@container": "@set"
+  reflectDepth:
+    "@id": "https://yeetz.dev/bedrock/reflect-depth"
+  oracle:
+    "@id": "https://yeetz.dev/bedrock/oracle"
+    "@type": "@id"
+  disposition:
+    "@id": "https://yeetz.dev/bedrock/disposition"
+    "@type": "@json"
+  subject:
+    "@id": "https://yeetz.dev/bedrock/subject"
+    "@type": "@id"
+  criteria:
+    "@id": "https://yeetz.dev/bedrock/criteria"
+    "@container": "@set"
+  findings:
+    "@id": "https://yeetz.dev/bedrock/findings"
+    "@type": "@json"
+  artifactDigest:
+    "@id": "https://yeetz.dev/bedrock/artifact-digest"
+  destination:
+    "@id": "https://yeetz.dev/bedrock/destination"
+  config:
+    "@id": "https://yeetz.dev/bedrock/config"
+    "@type": "@id"
+  result:
+    "@id": "https://yeetz.dev/bedrock/result"
+  timestamp:
+    "@id": "https://yeetz.dev/bedrock/timestamp"

@@ -65,6 +65,48 @@ pub fn namespace_graph(ns: &str) -> String {
     format!("https://yeetz.dev/graph/{ns}")
 }
 
+/// The bedrock ontology base: `https://yeetz.dev/bedrock/ontology/`.
+pub const ONTOLOGY_PREFIX: &str = "https://yeetz.dev/bedrock/ontology/";
+
+/// The bedrock predicate base: `https://yeetz.dev/bedrock/`.
+pub const PREDICATE_PREFIX: &str = "https://yeetz.dev/bedrock/";
+
+pub fn ontology_type(local: &str) -> String {
+    format!("{ONTOLOGY_PREFIX}{local}")
+}
+
+pub fn predicate(local: &str) -> String {
+    format!("{PREDICATE_PREFIX}{local}")
+}
+
+/// The closed set of base @types (0.2.0 base protocol, operating reference
+/// §"Base ontology"): every vertex's `@type` must intersect this set — rule
+/// C9. Repo-specific archetypes ride alongside one of these in the same
+/// `@type` array; they never stand alone and never redefine a base term.
+pub const BASE_TYPES: [&str; 10] = [
+    "https://yeetz.dev/bedrock/ontology/Invariant",
+    "https://yeetz.dev/bedrock/ontology/Breadcrumb",
+    "https://yeetz.dev/bedrock/ontology/Term",
+    "https://yeetz.dev/bedrock/ontology/Identity",
+    "https://yeetz.dev/bedrock/ontology/SituationStructure",
+    "https://yeetz.dev/bedrock/ontology/Risk",
+    "https://yeetz.dev/bedrock/ontology/Plan",
+    "https://yeetz.dev/bedrock/ontology/EpochRecord",
+    "https://yeetz.dev/bedrock/ontology/DeployRecord",
+    "https://yeetz.dev/bedrock/ontology/ReflectVerdict",
+];
+
+/// Base IRIs used by check rules C8 (witness gate) and C10 (digest skew).
+pub const WITNESSES_IRI: &str = "https://yeetz.dev/bedrock/witnesses";
+pub const DISPOSITION_IRI: &str = "https://yeetz.dev/bedrock/disposition";
+pub const RDF_JSON_DATATYPE: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#JSON";
+pub const ORACLE_IRI: &str = "https://yeetz.dev/bedrock/oracle";
+
+/// The installed base files `bedrock update` refreshes from the binary's
+/// embedded copies, checked by C10: `seed/schemas/*.json`, `seed/context.yamlld`,
+/// and the operating reference at `situation/references/bedrock-operating.md`.
+pub const OPERATING_REF_PATH: &str = "situation/references/bedrock-operating.md";
+
 /// The fixed, deterministic `@prefix` prelude for TriG output (SPINE §5:
 /// "sorted @prefix prelude"). The oxttl serializer orders prefixes by
 /// *descending IRI length*; all four lengths below are distinct so the

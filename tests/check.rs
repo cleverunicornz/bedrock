@@ -139,6 +139,66 @@ fn c7_parseback_gate_polarity() {
 }
 
 #[test]
+fn c8_witness_gate_polarity() {
+    // Good: a Plan and a ReflectVerdict, both disposition done WITH witnesses.
+    let good = materialize("C8/good");
+    build_and_check_ok(&good);
+
+    // Bad: disposition done with zero witnesses -> C8 on both namespaces.
+    let bad = materialize("C8/bad");
+    let combined = check_fails_with(&bad, "C8");
+    assert!(
+        combined.contains("no witness, no done"),
+        "gate message present: {combined}"
+    );
+    assert!(
+        combined.contains("situation/plan/plan-done.yamlld"),
+        "plan named: {combined}"
+    );
+    assert!(combined.contains("C8"), "{combined}");
+}
+
+#[test]
+fn c9_base_type_polarity() {
+    // Good: a repo archetype riding alongside a base @type.
+    let good = materialize("C9/good");
+    build_and_check_ok(&good);
+
+    // Bad: a repo archetype alone, no base @type.
+    let bad = materialize("C9/bad");
+    let combined = check_fails_with(&bad, "C9");
+    assert!(
+        combined.contains("no base @type"),
+        "base-type message present: {combined}"
+    );
+    assert!(
+        combined.contains("https://yeetz.dev/myrepo/ADR"),
+        "offending archetype named: {combined}"
+    );
+}
+
+#[test]
+fn c10_digest_skew_polarity() {
+    // Good: installed base files byte-match the binary's embedded copies.
+    let good = materialize("C10/good");
+    build_and_check_ok(&good);
+
+    // Bad: a stale installed schema + context + operating reference.
+    let bad = materialize("C10/bad");
+    let combined = check_fails_with(&bad, "C10");
+    assert!(
+        combined.contains("bedrock update"),
+        "violation names `bedrock update`: {combined}"
+    );
+    assert!(
+        combined.contains("seed/schemas/plan.json")
+            && combined.contains("seed/context.yamlld")
+            && combined.contains("bedrock-operating.md"),
+        "skewed files named: {combined}"
+    );
+}
+
+#[test]
 fn plan_trig_projection_is_written_and_deterministic() {
     // C1/good carries a plan vertex → build emits situation/plan/plan-a.trig.
     let s = materialize("C1/good");
@@ -193,6 +253,19 @@ fn agents_md_register_content() {
     // Breadcrumbs heading (none declared in this fixture → placeholder).
     assert!(md.contains("## Breadcrumbs"));
     assert!(md.contains("## Where things live"));
+    // 0.2.0 base protocol: operating section with THE CHAIN in one line.
+    assert!(
+        md.contains("## Operating this repository"),
+        "operating section present: {md}"
+    );
+    assert!(
+        md.contains("every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured"),
+        "the chain rendered in one line: {md}"
+    );
+    assert!(
+        md.contains("situation/references/bedrock-operating.md"),
+        "pointer to the operating reference: {md}"
+    );
     // Terminal generator+digest marker.
     assert!(
         md.contains("bedrock ") && md.contains("digest "),

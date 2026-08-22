@@ -56,6 +56,13 @@ fn init_seeds_new_repo_and_passes_check() {
     // Compiled artifacts.
     assert!(s.path().join("situation/graph.trig").exists());
     assert!(s.path().join("AGENTS.md").exists());
+    // 0.2.0 base protocol: the operating reference is installed.
+    assert!(
+        s.path()
+            .join("situation/references/bedrock-operating.md")
+            .exists(),
+        "operating reference installed by init"
+    );
     // Instruction set emitted (W4 placeholders are wired via include_str!).
     assert!(
         out.contains("AGENTS.md") && out.contains("think/"),
@@ -230,6 +237,65 @@ fn adopt_writes_mode_adopt_record_and_regenerates() {
 }
 
 #[test]
+fn update_refreshes_skewed_installed_base_files() {
+    // A repo seeded by init, then skewed: `bedrock update` must restore the
+    // installed base files from this binary's embedded copies, print exactly
+    // what changed, run check+build, and leave the repo passing.
+    let s = Scratch::new("update");
+    let (c, out, err) = run(&["init", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c, 0, "init must succeed\n{out}\n{err}");
+
+    let rewrite_append = |rel: &str, extra: &str| {
+        let p = s.path().join(rel);
+        let mut text = std::fs::read_to_string(&p).unwrap();
+        text.push_str(extra);
+        std::fs::write(&p, text).unwrap();
+    };
+    rewrite_append("seed/schemas/plan.json", "# stale installed schema\n");
+    rewrite_append(
+        "seed/context.yamlld",
+        "\n  stale-term: \"https://yeetz.dev/stale/marker\"\n",
+    );
+    rewrite_append(
+        "situation/references/bedrock-operating.md",
+        "\nstale marker\n",
+    );
+
+    // check must fail with C10 naming `bedrock update`.
+    let (c2, out2, err2) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    let v2 = format!("{out2}\n{err2}");
+    assert_eq!(c2, 1, "skewed base files must fail check:\n{v2}");
+    assert!(
+        v2.contains("C10") && v2.contains("bedrock update"),
+        "C10 violation names the fix: {v2}"
+    );
+
+    // update refreshes from embedded copies and reports the changed files.
+    let (c3, out3, err3) = run(&["update", s.path().to_str().unwrap()], &manifest());
+    let combined = format!("{out3}\n{err3}");
+    assert_eq!(c3, 0, "update must succeed:\n{combined}");
+    assert!(
+        out3.contains("seed/schemas/plan.json")
+            && out3.contains("seed/context.yamlld")
+            && out3.contains("bedrock-operating.md"),
+        "update prints exactly what changed: {out3}"
+    );
+
+    // Restored to the binary's embedded copies (byte-identical).
+    let embedded_plan = std::fs::read(manifest().join("seed/schemas/plan.json")).unwrap();
+    let installed_plan = std::fs::read(s.path().join("seed/schemas/plan.json")).unwrap();
+    assert_eq!(embedded_plan, installed_plan, "schema restored");
+    let embedded_op = std::fs::read(manifest().join("src/embedded/bedrock-operating.md")).unwrap();
+    let installed_op =
+        std::fs::read(s.path().join("situation/references/bedrock-operating.md")).unwrap();
+    assert_eq!(embedded_op, installed_op, "operating reference restored");
+
+    // check passes again.
+    let (c4, out4, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c4, 0, "post-update check passes:\n{out4}");
+}
+
+#[test]
 fn offline_flag_stamps_epoch_record() {
     let s = Scratch::new("offline");
     let (c, out, err) = run(
@@ -344,6 +410,7 @@ fn check_help_and_version_contracts() {
                 && out.contains("adopt")
                 && out.contains("check")
                 && out.contains("build")
+                && out.contains("update")
         );
     }
     let (c, out, _) = run(&["--version"], s.path());

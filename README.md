@@ -25,6 +25,9 @@ installs is `bedrock`.
 - `bedrock check` — validate `situation/`; the CI entrypoint.
 - `bedrock build` — compile YAML-LD to TriG and regenerate `AGENTS.md`;
   refuses to run while `check` fails.
+- `bedrock update` — refresh the installed base files (schemas, context,
+  operating reference) from this binary's embedded copies, then check and
+  build; additive-safe, never touches repo-authored vertices.
 - `bedrock help`  — the contract, short.
 
 ## The model

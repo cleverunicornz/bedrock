@@ -108,3 +108,9 @@ graph:architecture {
 		bedrock:path bedrock:path\/situation\/architecture , bedrock:path\/situation\/definition , bedrock:path\/situation\/plan , bedrock:path\/situation\/record , bedrock:path\/situation\/references , bedrock:path\/situation\/risk ;
 		bedrock:statement "situation/ is the repo's law and memory: six flat namespace directories (definition, architecture, risk, plan, record, references) holding YAML-LD vertices that bedrock check validates and build compiles into the register.\n" .
 }
+graph:definition {
+	bedrock:vertex\/term-promise-witness-oracle a bedrock:ontology\/Term ;
+		bedrock:label "promise, oracle, witness, residual" ;
+		bedrock:layer "floor" ;
+		bedrock:statement "A promise states behavior; an oracle judges promise against actual. A witness is the retained observation of one run and proves existence, never exclusivity. Residual is what was deliberately not assured, declared so everyone sees the line of demarcation — we assure the positive space only; the negative space is infinite.\n" .
+}

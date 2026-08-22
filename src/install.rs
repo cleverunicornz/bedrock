@@ -21,26 +21,34 @@ pub const VERSION_GATE_ENABLED: bool = false;
 /// enforced by `check`, the CI gate, and verified against the fresh state
 /// after writing.
 pub fn build(root: &Path) -> Result<(), Fatal> {
-    let (violations, compiled) = check::collect(root)?;
-    if !violations.is_empty() {
-        print_violations(&violations);
-        return Err(Fatal("build aborted: source check failed".to_string()));
-    }
-    let c = compiled.expect("collect always yields a compiled graph");
-    write_artifacts(root, &c)?;
-    let (post, _) = check::run(root)?;
-    if !post.is_empty() {
-        print_violations(&post);
-        return Err(Fatal(
-            "build aborted: regenerated state does not pass the full check (non-deterministic output?)"
-                .to_string(),
-        ));
-    }
+    let c = regenerate_and_verify(root, "build")?;
     println!(
         "bedrock build: situation/graph.trig + {} plan projection(s) + AGENTS.md up to date",
         c.plan_trigs.len()
     );
     Ok(())
+}
+
+/// Shared tail of `build` and `update`: validate the source, write
+/// artifacts, then run the full `check` on the fresh state.
+fn regenerate_and_verify(target: &Path, verb: &str) -> Result<Compiled, Fatal> {
+    let (violations, compiled) = check::collect(target)?;
+    if !violations.is_empty() {
+        print_violations(&violations);
+        return Err(Fatal(format!(
+            "bedrock {verb} aborted: source check failed"
+        )));
+    }
+    let c = compiled.expect("collect always yields a compiled graph");
+    write_artifacts(target, &c)?;
+    let (post, _) = check::run(target)?;
+    if !post.is_empty() {
+        print_violations(&post);
+        return Err(Fatal(format!(
+            "bedrock {verb} aborted: regenerated state does not pass the full check (non-deterministic output?)"
+        )));
+    }
+    Ok(c)
 }
 
 /// Write graph.trig, per-plan .trig, and AGENTS.md (SPINE §5).
@@ -228,6 +236,9 @@ fn install_seed(seed: &Path, target: &Path) -> Result<(), Fatal> {
     copy_dir(seed, &seed_dst)?;
     install_gitignore(seed, target)?;
     promote_workflow(target, &seed_dst)?;
+    // 0.2.0 base protocol: install the operating reference (digest-guarded by
+    // C10 like the schemas/context).
+    install_operating_reference(target)?;
 
     // Generate the consumer's first graph.trig/AGENTS.md is deferred to
     // `finalize_and_verify`, which runs after the epoch record exists.
@@ -324,6 +335,134 @@ fn collect_workflow_files(dir: &Path, out: &mut Vec<PathBuf>) {
             }
         }
     }
+}
+
+/// Write the operating reference (0.2.0 base protocol) verbatim from the
+/// compile-time constant, so `bedrock check` C10 — which compares the
+/// installed file against the same embedded bytes — passes by construction.
+fn install_operating_reference(target: &Path) -> Result<(), Fatal> {
+    let bytes = include_str!("embedded/bedrock-operating.md").as_bytes();
+    let dest = target.join(crate::contextreg::OPERATING_REF_PATH);
+    if let Ok(existing) = std::fs::read(&dest) {
+        if existing == bytes {
+            return Ok(());
+        }
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| Fatal(format!("cannot create {}: {e}", parent.display())))?;
+    }
+    std::fs::write(&dest, bytes)
+        .map_err(|e| Fatal(format!("cannot write {}: {e}", dest.display())))?;
+    println!("bedrock: installed situation/references/bedrock-operating.md");
+    Ok(())
+}
+
+/// Write `bytes` to `<target>/<rel>` when absent or differing; true when it
+/// wrote. `bedrock update` refreshes the installed base files through this.
+fn write_installed_base(target: &Path, bytes: &[u8], rel: &str) -> Result<bool, Fatal> {
+    let dest = target.join(rel);
+    if let Ok(existing) = std::fs::read(&dest) {
+        if existing == bytes {
+            return Ok(false);
+        }
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| Fatal(format!("cannot create {}: {e}", parent.display())))?;
+    }
+    std::fs::write(&dest, bytes)
+        .map_err(|e| Fatal(format!("cannot write {}: {e}", dest.display())))?;
+    Ok(true)
+}
+
+/// Promote the embedded workflow template only when the consumer has none.
+/// A present workflow — typically customized (pinned version) — is never
+/// clobbered: `update` is additive-safe (operating reference, §Refusals).
+fn install_workflow_if_missing(target: &Path, embedded_seed: &Path) -> Result<usize, Fatal> {
+    let mut candidates = Vec::new();
+    collect_workflow_files(embedded_seed, &mut candidates);
+    let mut installed = 0;
+    for src in candidates {
+        let name = src
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        let dst = target.join(".github").join("workflows").join(&name);
+        if dst.exists() {
+            continue; // consumer copy wins (additive-safe)
+        }
+        if let Some(parent) = dst.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| Fatal(format!("cannot create {}: {e}", parent.display())))?;
+        }
+        std::fs::copy(&src, &dst)
+            .map_err(|e| Fatal(format!("cannot install workflow {}: {e}", dst.display())))?;
+        installed += 1;
+    }
+    Ok(installed)
+}
+
+/// `bedrock update` — refresh the installed base files (schemas, context,
+/// operating reference, missing workflow template) from the binary's embedded
+/// copies; print exactly what changed; then run `check` + `build`.
+///
+/// Additive-safe: repo-authored vertices, extension schemas, and a present
+/// (customized) workflow template are never touched; `AGENTS.md`/`graph.trig`
+/// are regenerated and nothing else.
+pub fn update(target: &Path) -> Result<(), Fatal> {
+    let seed = embedded_seed()?;
+    let mut changed: Vec<String> = Vec::new();
+
+    // seed/schemas/*.json
+    for ns in crate::contextreg::GRAPH_NAMESPACES {
+        let rel = format!("seed/schemas/{ns}.json");
+        let src = seed.join("schemas").join(format!("{ns}.json"));
+        let bytes =
+            std::fs::read(&src).map_err(|e| Fatal(format!("cannot read embedded {rel}: {e}")))?;
+        if write_installed_base(target, &bytes, &rel)? {
+            changed.push(rel);
+        }
+    }
+    // seed/context.yamlld
+    let ctx = seed.join("context.yamlld");
+    let bytes = std::fs::read(&ctx)
+        .map_err(|e| Fatal(format!("cannot read embedded seed/context.yamlld: {e}")))?;
+    if write_installed_base(target, &bytes, "seed/context.yamlld")? {
+        changed.push("seed/context.yamlld".to_string());
+    }
+    // operating reference
+    let op_bytes = include_str!("embedded/bedrock-operating.md").as_bytes();
+    if write_installed_base(target, op_bytes, crate::contextreg::OPERATING_REF_PATH)? {
+        changed.push(crate::contextreg::OPERATING_REF_PATH.to_string());
+    }
+    // workflow template (install if missing; consumer copy left untouched)
+    let workflows = install_workflow_if_missing(target, seed)?;
+    if workflows > 0 {
+        changed.push(format!(
+            ".github/workflows ({} template(s) installed)",
+            workflows
+        ));
+    }
+
+    // Report exactly what changed.
+    if changed.is_empty() {
+        println!("bedrock update: all installed base files already current");
+    } else {
+        println!("bedrock update: refreshed {} file(s):", changed.len());
+        for rel in &changed {
+            println!("  + {rel}");
+        }
+    }
+
+    // Then check + build against the refreshed state.
+    let c = regenerate_and_verify(target, "update")?;
+    println!(
+        "bedrock update: check + build pass ({} plan projection(s) written)",
+        c.plan_trigs.len()
+    );
+    Ok(())
 }
 
 /// Write the epoch record vertex (SPINE §6), conforming to the record

@@ -8,6 +8,9 @@ root `AGENTS.md`, ran `check`, and it passed. Go in order.
 - `situation/` skeleton — six empty namespaces, ready for vertices.
 - Seed floor — invariants and terms as vertices tagged `layer: floor`.
 - A workflow hook — `bedrock check` + `bedrock build` on `situation/` changes.
+- The operating reference — `situation/references/bedrock-operating.md`, the
+  base protocol: the CHAIN (promise, oracle, witness, residual), the ontology,
+  every rule. Read it before writing your first vertex.
 - Root `AGENTS.md`, compiled from the graph. Read it first. It is law; never
   hand-edit it.
 

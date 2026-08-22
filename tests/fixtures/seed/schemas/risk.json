@@ -9,7 +9,13 @@
   "properties": {
     "@context": { "const": "https://yeetz.dev/bedrock/context/v1" },
     "@id": { "$ref": "#/$defs/vertexId" },
-    "@type": { "const": "https://yeetz.dev/bedrock/ontology/Risk" },
+    "@type": {
+      "description": "Risk scalar, or an array containing Risk (repo archetypes ride alongside; rule C9)",
+      "oneOf": [
+        { "const": "https://yeetz.dev/bedrock/ontology/Risk" },
+        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^https://[^\\s]+$" }, "contains": { "const": "https://yeetz.dev/bedrock/ontology/Risk" } }
+      ]
+    },
     "label": { "$ref": "#/$defs/label" },
     "statement": { "$ref": "#/$defs/boundedText" },
     "requires": { "$ref": "#/$defs/vertexPointer" },

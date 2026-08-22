@@ -1,0 +1,8 @@
+# C9 good: a repo archetype riding alongside a base @type -> passes.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/archetype"
+"@type":
+  - "https://yeetz.dev/myrepo/ADR"
+  - "https://yeetz.dev/bedrock/ontology/Term"
+label: "Archetype rides alongside"
+statement: "A repo archetype carries a base Term type too."

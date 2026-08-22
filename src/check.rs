@@ -10,13 +10,17 @@
 //! - C5 edge resolution (vertex @id set or repo path)
 //! - C6 byte determinism vs committed graph.trig/plan projections
 //! - C7 parse-back equivalence
+//! - C8 witness gate (base protocol): disposition `done` requires ≥1 witness
+//! - C9 base-type: every vertex @type intersects the base @type set
+//! - C10 digest-skew: installed base files vs the binary's embedded copies
 
 use crate::compile;
-use crate::contextreg::{ContextRegistry, NAMESPACES};
+use crate::contextreg::{ContextRegistry, GRAPH_NAMESPACES, NAMESPACES, OPERATING_REF_PATH};
 use crate::errors::{Fatal, Violation};
 use crate::generate;
 use crate::schema::SchemaRegistry;
 use oxrdf::{NamedOrBlankNode, Quad, Term};
+use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -42,6 +46,9 @@ pub fn run(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal> {
     if let Some(c) = &compiled {
         drift_checks(root, c, &mut out);
     }
+    // C10: installed base files (schemas, context, operating reference)
+    // must match this binary's embedded copies.
+    digest_skew_checks(root, &mut out);
     Ok((out, compiled))
 }
 
@@ -80,6 +87,10 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
                 Ok(quads) => {
                     // C4
                     out.extend(schemas.validate(ns_name, value, &rel(&f.rel), &f.text));
+                    // C8 witness gate (plan + record namespace)
+                    out.extend(c8_witness_gate(ns_name, value, &rel(&f.rel), &f.text));
+                    // C9 base-type intersection
+                    out.extend(c9_base_type(value, &rel(&f.rel), &f.text));
                     if f.ns.as_deref() == Some("plan") {
                         plan_quads.push((f.rel.clone(), quads.clone()));
                     }
@@ -389,6 +400,126 @@ fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
                 ));
             }
         }
+    }
+}
+
+/// C8 (witness gate, base protocol): a Plan or ReflectVerdict whose
+/// `disposition.state` is `done` must carry at least one `witnesses` entry —
+/// no witness, no done. Judged on the parsed vertex so the violation is
+/// line-cited at the `done` (the source schema has already validated shape).
+fn c8_witness_gate(ns: Option<&str>, value: &Value, rel: &str, src: &str) -> Vec<Violation> {
+    let gate_type = match ns {
+        Some("plan") => crate::contextreg::ontology_type("Plan"),
+        Some("record") => crate::contextreg::ontology_type("ReflectVerdict"),
+        _ => return Vec::new(),
+    };
+    let types = type_iris(value);
+    if !types.contains(&gate_type) {
+        return Vec::new();
+    }
+    let Some(state) = value
+        .get("disposition")
+        .and_then(|d| d.get("state"))
+        .and_then(|s| s.as_str())
+    else {
+        return Vec::new(); // no disposition declared → no gate
+    };
+    if state != "done" {
+        return Vec::new();
+    }
+    let witnesses = value
+        .get("witnesses")
+        .and_then(|w| w.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0);
+    if witnesses == 0 {
+        vec![Violation::new(
+            "C8",
+            rel,
+            crate::errors::line_of(src, "done"),
+            "disposition is `done` with zero witnesses — no witness, no done (base protocol chain rule; a witness is a retained CI-run-URL observation, never a local attestation)",
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
+/// C9 (base-type, base protocol): every vertex's `@type` set must intersect
+/// the closed base @type set. Repo archetypes may ride alongside a base type
+/// in the same array, never alone; they never redefine a base term.
+fn c9_base_type(value: &Value, rel: &str, src: &str) -> Vec<Violation> {
+    let types = type_iris(value);
+    if types.is_empty() {
+        return Vec::new(); // missing/malformed @type is a C4/schema concern
+    }
+    if types
+        .iter()
+        .any(|t| crate::contextreg::BASE_TYPES.contains(&t.as_str()))
+    {
+        return Vec::new();
+    }
+    let bad = types.first().cloned().unwrap_or_default();
+    vec![Violation::new(
+        "C9",
+        rel,
+        crate::errors::line_of(src, &bad),
+        format!(
+            "vertex {bad} carries no base @type — every vertex must carry at least one of (Invariant|Breadcrumb|Term|Identity|SituationStructure|Risk|Plan|EpochRecord|DeployRecord|ReflectVerdict); repo archetypes ride alongside, never alone"
+        ),
+    )]
+}
+
+/// Extract the `@type` IRIs (string or array) of a parsed vertex.
+fn type_iris(value: &Value) -> Vec<String> {
+    match value.get("@type") {
+        Some(Value::String(s)) => vec![s.clone()],
+        Some(Value::Array(a)) => a
+            .iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// C10 (digest-skew): installed seed/schemas/*.json, seed/context.yamlld, and
+/// the operating reference must byte-match this binary's embedded copies,
+/// else the repo runs against a different base protocol than the installed
+/// binary and must be refreshed with `bedrock update`. Absence is not skew —
+/// a repo that never installed a base file fails earlier and differently.
+fn digest_skew_checks(root: &Path, out: &mut Vec<Violation>) {
+    let seed = &crate::embedded::SEED;
+    for ns in GRAPH_NAMESPACES {
+        let rel = format!("seed/schemas/{ns}.json");
+        // SEED is rooted at `seed/`, so the in-tree path has no `seed/` prefix.
+        let embedded = seed
+            .get_file(format!("schemas/{ns}.json").as_str())
+            .map(|f| f.contents());
+        check_base_blob(root, out, &rel, embedded);
+    }
+    let embedded_ctx = seed.get_file("context.yamlld").map(|f| f.contents());
+    check_base_blob(root, out, "seed/context.yamlld", embedded_ctx);
+    let embedded_op = Some(include_str!("embedded/bedrock-operating.md").as_bytes());
+    check_base_blob(root, out, OPERATING_REF_PATH, embedded_op);
+}
+
+fn check_base_blob(root: &Path, out: &mut Vec<Violation>, rel: &str, embedded: Option<&[u8]>) {
+    let Some(embedded) = embedded else {
+        return; // the embedded copy is compile-time; absence here is a build defect
+    };
+    let p = root.join(rel);
+    if !p.exists() {
+        return;
+    }
+    match std::fs::read(&p) {
+        Ok(installed) if installed != embedded => out.push(Violation::new(
+            "C10",
+            rel,
+            0,
+            format!(
+                "installed {rel} differs from this binary's embedded copy — run `bedrock update` to refresh the installed base files (base protocol C10)"
+            ),
+        )),
+        _ => {}
     }
 }
 
