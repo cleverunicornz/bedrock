@@ -26,7 +26,7 @@ jobs:
     env:
       # Placeholder — pin the exact bedrock version this repo operates under.
       # Set the real released version (or pinned nightly) before enabling.
-      BEDROCK_VERSION: '0.2.0'
+      BEDROCK_VERSION: '0.2.1'
 
     steps:
       - uses: actions/checkout@v4

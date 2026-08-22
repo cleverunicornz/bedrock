@@ -1,12 +1,15 @@
+# Installed by bedrock v0.2.0 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
 # Bedrock operating reference — the base protocol
 
 This is the standardized minimum every bedrock repo builds on, plus the
 contract of the `update` verb. bedrock ships this text compiled into the
 binary and installs it at `situation/references/bedrock-operating.md` on
-`init`, `adopt`, and `update`. Rule C10 (digest-skew) fails a repo whose
-installed copy differs from the binary's embedded copy and names `bedrock
-update` as the fix. Repo law layers on top of this protocol; it never
-rewrites it.
+`init`, `adopt`, and `update`. Every installed base file carries a
+provenance stamp naming the generating bedrock version — machine-owned,
+never edited locally. Rule C10 (digest-skew) fails a repo whose installed
+copy differs from this binary's canonical stamped form (embedded template +
+provenance stamp for the current version) and names `bedrock update` as the
+fix. Repo law layers on top of this protocol; it never rewrites it.
 
 ## THE CHAIN: promise, oracle, witness, residual
 
@@ -133,6 +136,16 @@ following:
   — except the root `AGENTS.md`, which `build` regenerates;
 - `update` never touches repo-authored vertices, extension schemas, or the
   workflow template once a consumer copy exists.
+
+Installed base files are machine-owned (their provenance stamp says so).
+Routing law when one needs changing:
+
+- never patch an installed base file locally — the next refresh erases your
+  edits;
+- base defects and friction are issues/PRs at the bedrock repo
+  (https://github.com/cleverunicornz/bedrock) — agents are encouraged to
+  file them;
+- `bedrock update` is the only local refresh.
 
 ## Re-situate
 

@@ -12,7 +12,9 @@
 //! - C7 parse-back equivalence
 //! - C8 witness gate (base protocol): disposition `done` requires ≥1 witness
 //! - C9 base-type: every vertex @type intersects the base @type set
-//! - C10 digest-skew: installed base files vs the binary's embedded copies
+//! - C10 digest-skew: installed base files vs this binary's canonical
+//!   stamped form (embedded template + provenance stamp for the current
+//!   version)
 
 use crate::compile;
 use crate::contextreg::{ContextRegistry, GRAPH_NAMESPACES, NAMESPACES, OPERATING_REF_PATH};
@@ -104,7 +106,10 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
 
     // ---------- compile + C7 ----------
     let sorted = compile::sort_quads(all_quads.clone());
-    let trig = compile::serialize_trig(&sorted).map_err(Fatal)?;
+    let raw_trig = compile::serialize_trig(&sorted).map_err(Fatal)?;
+    // 0.2.1 provenance: TriG output carries a machine-owned header (`#`
+    // comment; the oxttl parser ignores it, so C7 still holds).
+    let trig = stamp_trig(&raw_trig);
     // C7: parse-back equivalence — emitted TriG must decode to the dataset
     // we compiled.
     if let Some(v) = compile::verify_parseback(&sorted, &trig) {
@@ -129,8 +134,9 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
     let plan_trigs: Vec<(PathBuf, Vec<u8>)> = plan_quads
         .into_iter()
         .map(|(rel, quads)| {
-            let bytes =
-                compile::serialize_trig(&compile::sort_quads(quads)).expect("plan serializes");
+            let bytes = stamp_trig(
+                &compile::serialize_trig(&compile::sort_quads(quads)).expect("plan serializes"),
+            );
             (rel.clone().with_extension("trig"), bytes)
         })
         .collect();
@@ -481,28 +487,49 @@ fn type_iris(value: &Value) -> Vec<String> {
     }
 }
 
+/// 0.2.1 provenance: prepend the machine-owned TriG header (`#` comment) to
+/// compiled graph.trig / plan .trig output.
+fn stamp_trig(bytes: &[u8]) -> Vec<u8> {
+    let h = crate::provenance::header(crate::provenance::Kind::Trig, env!("CARGO_PKG_VERSION"));
+    let mut out = Vec::with_capacity(h.len() + 1 + bytes.len());
+    out.extend_from_slice(h.as_bytes());
+    out.push(b'\n');
+    out.extend_from_slice(bytes);
+    out
+}
+
 /// C10 (digest-skew): installed seed/schemas/*.json, seed/context.yamlld, and
-/// the operating reference must byte-match this binary's embedded copies,
-/// else the repo runs against a different base protocol than the installed
-/// binary and must be refreshed with `bedrock update`. Absence is not skew —
-/// a repo that never installed a base file fails earlier and differently.
+/// the operating reference must byte-match this binary's canonical stamped
+/// form — the embedded template with the provenance stamp rendered for the
+/// CURRENT binary version — else the repo runs against a different base
+/// protocol than the installed binary and must be refreshed with `bedrock
+/// update`. A version-skewed stamp is exactly this violation. Absence is not
+/// skew — a repo that never installed a base file fails earlier and
+/// differently.
 fn digest_skew_checks(root: &Path, out: &mut Vec<Violation>) {
     let seed = &crate::embedded::SEED;
+    use crate::provenance::Kind;
     for ns in GRAPH_NAMESPACES {
         let rel = format!("seed/schemas/{ns}.json");
         // SEED is rooted at `seed/`, so the in-tree path has no `seed/` prefix.
         let embedded = seed
             .get_file(format!("schemas/{ns}.json").as_str())
             .map(|f| f.contents());
-        check_base_blob(root, out, &rel, embedded);
+        check_base_blob(root, out, &rel, embedded, Kind::Json);
     }
     let embedded_ctx = seed.get_file("context.yamlld").map(|f| f.contents());
-    check_base_blob(root, out, "seed/context.yamlld", embedded_ctx);
+    check_base_blob(root, out, "seed/context.yamlld", embedded_ctx, Kind::Hash);
     let embedded_op = Some(include_str!("embedded/bedrock-operating.md").as_bytes());
-    check_base_blob(root, out, OPERATING_REF_PATH, embedded_op);
+    check_base_blob(root, out, OPERATING_REF_PATH, embedded_op, Kind::Hash);
 }
 
-fn check_base_blob(root: &Path, out: &mut Vec<Violation>, rel: &str, embedded: Option<&[u8]>) {
+fn check_base_blob(
+    root: &Path,
+    out: &mut Vec<Violation>,
+    rel: &str,
+    embedded: Option<&[u8]>,
+    kind: crate::provenance::Kind,
+) {
     let Some(embedded) = embedded else {
         return; // the embedded copy is compile-time; absence here is a build defect
     };
@@ -510,13 +537,20 @@ fn check_base_blob(root: &Path, out: &mut Vec<Violation>, rel: &str, embedded: O
     if !p.exists() {
         return;
     }
+    // C10 coherence (0.2.1): the canonical expected form is the embedded
+    // template + the provenance stamp rendered for the current binary
+    // version — install, update, and this comparison use the same render, so
+    // raw embedded bytes ≠ installed bytes and a stale stamp flags here.
+    let version = crate::provenance::current_version();
+    let expected = crate::provenance::render(kind, version, embedded);
     match std::fs::read(&p) {
-        Ok(installed) if installed != embedded => out.push(Violation::new(
+        Ok(installed) if installed != expected => out.push(Violation::new(
             "C10",
             rel,
             0,
             format!(
-                "installed {rel} differs from this binary's embedded copy — run `bedrock update` to refresh the installed base files (base protocol C10)"
+                "installed {rel} differs from this binary's canonical stamped form (embedded template + provenance stamp v{version}) — run `bedrock update` to refresh the installed base files; if the base itself is wrong, file an issue: {} (base protocol C10; a version-skewed stamp is exactly this violation)",
+                crate::provenance::REPO_URL,
             ),
         )),
         _ => {}
