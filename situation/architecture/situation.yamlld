@@ -1,0 +1,20 @@
+# A vertex for the situation structure itself (SPINE §3): the six namespaces,
+# their meaning, and one path edge each so the "Where things live" register
+# item renders the layout. These six directories exist in every repo seeded by
+# `bedrock init`; `references/` is the only one allowed to nest or hold
+# non-YAML-LD files.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/situation-structure"
+"@type": "https://yeetz.dev/bedrock/ontology/SituationStructure"
+label: "The situation structure"
+statement: >
+  situation/ is the repo's law and memory: six flat namespace directories
+  (definition, architecture, risk, plan, record, references) holding YAML-LD
+  vertices that bedrock check validates and build compiles into the register.
+path:
+  - "https://yeetz.dev/bedrock/path/situation/definition"
+  - "https://yeetz.dev/bedrock/path/situation/architecture"
+  - "https://yeetz.dev/bedrock/path/situation/risk"
+  - "https://yeetz.dev/bedrock/path/situation/plan"
+  - "https://yeetz.dev/bedrock/path/situation/record"
+  - "https://yeetz.dev/bedrock/path/situation/references"
