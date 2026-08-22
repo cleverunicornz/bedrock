@@ -62,7 +62,7 @@ pub fn write_artifacts(root: &Path, c: &Compiled) -> Result<(), Fatal> {
 /// `bedrock init` — seed a NEW repo (SPINE §1/§6).
 pub fn init(target: &Path, offline: bool) -> Result<(), Fatal> {
     version_gate("init", offline)?;
-    let seed = check::resolve_seed(&current_dir())?;
+    let seed = resolve_install_seed()?;
     tradition_check(target, false)?;
     install_seed(&seed, target)?;
     let record_short = write_epoch_record(target, "init", offline)?;
@@ -72,7 +72,7 @@ pub fn init(target: &Path, offline: bool) -> Result<(), Fatal> {
 /// `bedrock adopt` — epoch-change an EXISTING repo (SPINE §6).
 pub fn adopt(target: &Path, offline: bool) -> Result<(), Fatal> {
     version_gate("adopt", offline)?;
-    let seed = check::resolve_seed(&current_dir())?;
+    let seed = resolve_install_seed()?;
     install_seed(&seed, target)?;
     let record_short = write_epoch_record(target, "adopt", offline)?;
     finalize_and_verify(target, "adopt", record_short)
@@ -80,6 +80,63 @@ pub fn adopt(target: &Path, offline: bool) -> Result<(), Fatal> {
 
 fn current_dir() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+/// The compile-time-embedded seed tree, materialized once per process into a
+/// unique temp dir (thread-safe: multi-threaded test binaries run init
+/// concurrently; `LazyLock` guarantees a single materialization). The stored
+/// `Result` keeps a failure loud without panicking the installer.
+static EMBEDDED_SEED: std::sync::LazyLock<Result<PathBuf, String>> =
+    std::sync::LazyLock::new(|| {
+        let dir =
+            std::env::temp_dir().join(format!("bedrock-embedded-seed-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            return Err(format!(
+                "cannot create embedded-seed temp dir {}: {e}",
+                dir.display()
+            ));
+        }
+        crate::embedded::materialize(&dir).map_err(|e| {
+            format!(
+                "cannot materialize embedded seed into {}: {e}",
+                dir.display()
+            )
+        })?;
+        Ok(dir)
+    });
+
+fn embedded_seed() -> Result<&'static PathBuf, Fatal> {
+    match EMBEDDED_SEED.as_ref() {
+        Ok(p) => Ok(p),
+        Err(e) => Err(Fatal(e.clone())),
+    }
+}
+
+/// Resolve the seed for `init`/`adopt` — the three-tier SPINE §1 order:
+///   1. explicit `BEDROCK_SEED` env var — a defined-but-missing directory is
+///      a loud exit-1 failure (never silently falls through to the default);
+///   2. `./seed` in the caller's cwd, if present;
+///   3. the compile-time-embedded seed/ tree (what makes a cargo-installed
+///      binary standalone).
+fn resolve_install_seed() -> Result<PathBuf, Fatal> {
+    if let Ok(v) = std::env::var("BEDROCK_SEED") {
+        if !v.is_empty() {
+            let p = PathBuf::from(&v);
+            if !p.is_dir() {
+                return Err(Fatal(format!(
+                    "BEDROCK_SEED points at a missing directory: {}",
+                    p.display()
+                )));
+            }
+            return Ok(p);
+        }
+    }
+    let cwd_seed = current_dir().join("seed");
+    if cwd_seed.is_dir() {
+        return Ok(cwd_seed);
+    }
+    Ok(embedded_seed()?.clone())
 }
 
 /// Recursive directory copy (dirs + files). Overwrites existing files;

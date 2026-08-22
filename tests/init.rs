@@ -83,7 +83,34 @@ fn init_refuses_existing_repo() {
 
 #[test]
 fn init_missing_seed_is_loud() {
+    // An EXPLICIT BEDROCK_SEED pointing at nothing stays a loud exit-1
+    // failure — the SPINE §1 order never silently falls through to `./seed`
+    // in cwd or the embedded copy once the env var is defined.
     let s = Scratch::new("init-noseed");
+    let out = Command::new(bedrock_exe())
+        .args(["init", s.path().to_str().unwrap()])
+        .current_dir(s.path())
+        .env("BEDROCK_SEED", s.path().join("does-not-exist"))
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text.contains("BEDROCK_SEED"),
+        "must name the missing BEDROCK_SEED: {text}"
+    );
+}
+
+#[test]
+fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
+    // A bare dir with no ./seed on disk and no BEDROCK_SEED must seed from
+    // the compile-time-embedded seed/ (the 0.1.1 standalone-binary fix:
+    // cargo-installed bedrock has no repository checkout to read seed/ from).
+    let s = Scratch::new("embedded-seed");
     let out = Command::new(bedrock_exe())
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(s.path())
@@ -95,8 +122,48 @@ fn init_missing_seed_is_loud() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert_eq!(out.status.code(), Some(1));
-    assert!(text.contains("seed"), "must name the missing seed: {text}");
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "embedded-seed init must succeed:\n{text}"
+    );
+    // The embedded copy installed the six namespaces + real floor content.
+    for ns in [
+        "definition",
+        "architecture",
+        "risk",
+        "plan",
+        "record",
+        "references",
+    ] {
+        assert!(s.path().join("situation").join(ns).is_dir(), "missing {ns}");
+    }
+    assert!(
+        s.path()
+            .join("situation/definition/invariant-01-possibility-space.yamlld")
+            .exists(),
+        "embedded seed floor vertices must be installed"
+    );
+    assert!(s.path().join("situation/graph.trig").exists());
+    assert!(s.path().join("AGENTS.md").exists());
+
+    // End-to-end: the seeded repo passes a full check with no seed env.
+    let out2 = Command::new(bedrock_exe())
+        .args(["check", s.path().to_str().unwrap()])
+        .current_dir(s.path())
+        .env_remove("BEDROCK_SEED")
+        .output()
+        .unwrap();
+    let text2 = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out2.stdout),
+        String::from_utf8_lossy(&out2.stderr)
+    );
+    assert_eq!(
+        out2.status.code(),
+        Some(0),
+        "embedded-seed init must pass check end-to-end:\n{text2}"
+    );
 }
 
 #[test]

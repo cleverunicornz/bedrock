@@ -36,7 +36,7 @@ pub enum Command {
     Version,
 }
 
-/// Parse argv (excluding argv[0]).
+/// Parse argv (excluding `argv[0]`).
 pub fn parse(args: &[String]) -> Result<Command, Fatal> {
     if args.is_empty() {
         return Ok(Command::Help);

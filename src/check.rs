@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 pub struct Compiled {
     pub quads: Vec<Quad>,
     pub trig_bytes: Vec<u8>,
-    /// (situation/plan/<name>.trig relative path, bytes)
+    /// (`situation/plan/<name>.trig` relative path, bytes)
     pub plan_trigs: Vec<(PathBuf, Vec<u8>)>,
     pub agents_md: String,
 }
@@ -187,8 +187,12 @@ pub fn drift_checks(root: &Path, compiled: &Compiled, out: &mut Vec<Violation>) 
     }
 }
 
-/// Resolve the seed directory for a repo: `BEDROCK_SEED` override, else
-/// `<root>/seed`.
+/// Resolve the seed directory for `check`/`build`: `BEDROCK_SEED` override,
+/// else `<root>/seed` (the copy `init`/`adopt` install into the consumer).
+///
+/// Deliberately NO embedded fallback here: a repo under `check`/`build` must
+/// carry its own installed seed (SPINE §2/§8) — the embedded copy is the
+/// `init`/`adopt` bootstrap, resolved separately in `install.rs`.
 pub fn resolve_seed(root: &Path) -> Result<PathBuf, Fatal> {
     if let Ok(v) = std::env::var("BEDROCK_SEED") {
         if !v.is_empty() {
@@ -370,9 +374,7 @@ fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
                 if name == ".git" || name == "target" {
                     continue;
                 }
-                if name == "fixtures"
-                    && dir.file_name().and_then(|n| n.to_str()) == Some("tests")
-                {
+                if name == "fixtures" && dir.file_name().and_then(|n| n.to_str()) == Some("tests") {
                     continue;
                 }
                 stack.push(p);
