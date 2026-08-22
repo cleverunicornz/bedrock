@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "_:unknown"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "blank id"
+layer: floor
+statement: "bad"

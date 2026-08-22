@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/invariant-02"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Floor invariant two"
+layer: floor
+statement: "A gap has three suspects: the code, the requirement, or the instrument. Interrogate in the open before displacing any."

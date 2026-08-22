@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/clean"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Clean vertex"
+layer: floor
+statement: "No blank nodes, absolute IRIs, single served context."

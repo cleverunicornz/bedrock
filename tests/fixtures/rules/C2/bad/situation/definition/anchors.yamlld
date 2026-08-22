@@ -1,0 +1,9 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/anchors"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: &lbl "anchored label"
+layer: floor
+statement: "Anchors, aliases, and merge keys are forbidden."
+dup: *lbl
+merged:
+  <<: *lbl

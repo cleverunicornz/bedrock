@@ -1,0 +1,6 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/invariant-03"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Situated invariant one"
+layer: situated
+statement: "This repo keeps one generated AGENTS.md at the root and never hand-edits it."

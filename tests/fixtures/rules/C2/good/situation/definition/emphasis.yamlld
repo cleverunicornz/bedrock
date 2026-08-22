@@ -1,0 +1,8 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/emphasis"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Markdown emphasis stays legal"
+layer: floor
+statement: |
+  Fix it first, prove it after. Plain *can* and *consumption* inside a block
+  scalar are prose — not YAML aliases — and must not trip C2.

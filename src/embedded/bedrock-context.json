@@ -1,0 +1,63 @@
+{
+  "@context": {
+    "label": {
+      "@id": "https://yeetz.dev/bedrock/label"
+    },
+    "statement": {
+      "@id": "https://yeetz.dev/bedrock/statement"
+    },
+    "layer": {
+      "@id": "https://yeetz.dev/bedrock/layer"
+    },
+    "role": {
+      "@id": "https://yeetz.dev/bedrock/role"
+    },
+    "gate": {
+      "@id": "https://yeetz.dev/bedrock/gate"
+    },
+    "requires": {
+      "@id": "https://yeetz.dev/bedrock/requires",
+      "@type": "@id"
+    },
+    "references": {
+      "@id": "https://yeetz.dev/bedrock/references",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "consumes": {
+      "@id": "https://yeetz.dev/bedrock/consumes",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "produces": {
+      "@id": "https://yeetz.dev/bedrock/produces",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "member-of": {
+      "@id": "https://yeetz.dev/bedrock/member-of",
+      "@type": "@id"
+    },
+    "source": {
+      "@id": "https://yeetz.dev/bedrock/source",
+      "@type": "@id"
+    },
+    "path": {
+      "@id": "https://yeetz.dev/bedrock/path",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "commit": {
+      "@id": "https://yeetz.dev/bedrock/commit"
+    },
+    "version": {
+      "@id": "https://yeetz.dev/bedrock/version"
+    },
+    "mode": {
+      "@id": "https://yeetz.dev/bedrock/mode"
+    },
+    "offline": {
+      "@id": "https://yeetz.dev/bedrock/offline"
+    }
+  }
+}
