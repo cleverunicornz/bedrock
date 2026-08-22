@@ -1,0 +1,97 @@
+version: 1
+source: "fixtures/valid/exec_1786800000002_000000000002.yamlld"
+scenarios:
+  - name: "commissioned"
+    throughSequence: 0
+    phase: "https://yeetz.dev/execution-phase/awaiting-routing"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/implement"
+  - name: "implementer-selected"
+    throughSequence: 1
+    phase: "https://yeetz.dev/execution-phase/selected"
+    currentClass: "https://yeetz.dev/definition/implementer"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0001"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/implement"
+  - name: "implementer-in-custody"
+    throughSequence: 2
+    phase: "https://yeetz.dev/execution-phase/in-custody"
+    currentClass: "https://yeetz.dev/definition/implementer"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0001"
+    currentActor: "urn:yeetz:actor:implementer-fixture"
+    currentOpening: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0002"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/implement"
+  - name: "candidate-presented"
+    throughSequence: 3
+    phase: "https://yeetz.dev/execution-phase/awaiting-routing"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/validate"
+  - name: "validator-selected"
+    throughSequence: 4
+    phase: "https://yeetz.dev/execution-phase/selected"
+    currentClass: "https://yeetz.dev/definition/validator"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0004"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/validate"
+  - name: "validator-in-custody"
+    throughSequence: 5
+    phase: "https://yeetz.dev/execution-phase/in-custody"
+    currentClass: "https://yeetz.dev/definition/validator"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0004"
+    currentActor: "urn:yeetz:actor:validator-fixture"
+    currentOpening: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0005"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/validate"
+  - name: "non-accepting"
+    throughSequence: 6
+    phase: "https://yeetz.dev/execution-phase/awaiting-routing"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    currentDisposition: "https://yeetz.dev/disposition/non-accepting"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/correct"
+      - "https://yeetz.dev/act/close"
+  - name: "correction-selected"
+    throughSequence: 7
+    phase: "https://yeetz.dev/execution-phase/selected"
+    currentClass: "https://yeetz.dev/definition/implementer"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0007"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    currentDisposition: "https://yeetz.dev/disposition/non-accepting"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/correct"
+  - name: "correction-in-custody"
+    throughSequence: 8
+    phase: "https://yeetz.dev/execution-phase/in-custody"
+    currentClass: "https://yeetz.dev/definition/implementer"
+    currentInstruction: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0007"
+    currentActor: "urn:yeetz:actor:implementer-fixture"
+    currentOpening: "https://yeetz.dev/execution/exec_1786800000002_000000000002/transition/0008"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v1"
+    currentDisposition: "https://yeetz.dev/disposition/non-accepting"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/correct"
+  - name: "corrected-candidate-presented"
+    throughSequence: 9
+    phase: "https://yeetz.dev/execution-phase/awaiting-routing"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v2"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/validate"
+  - name: "corrected-candidate-accepted"
+    throughSequence: 12
+    phase: "https://yeetz.dev/execution-phase/awaiting-routing"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v2"
+    currentDisposition: "https://yeetz.dev/disposition/accepting"
+    nextAdmittedActs:
+      - "https://yeetz.dev/act/land"
+      - "https://yeetz.dev/act/close"
+  - name: "unit-terminal"
+    throughSequence: 13
+    phase: "https://yeetz.dev/execution-phase/terminal"
+    currentCandidate: "https://yeetz.dev/execution/exec_1786800000002_000000000002/artifact/candidate-v2"
+    currentDisposition: "https://yeetz.dev/disposition/accepting"
+    terminalOutcome: "https://yeetz.dev/outcome/completed"
+    nextAdmittedActs: []

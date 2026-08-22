@@ -1,0 +1,400 @@
+"$schema": "https://json-schema.org/draft/2020-12/schema"
+"$id": "https://yeetz.dev/schema/execution-record/v1"
+title: "Yeetz inactive execution record v1"
+type: object
+additionalProperties: false
+required:
+  - "@context"
+  - "@id"
+  - "@graph"
+properties:
+  "@context":
+    const: "https://yeetz.dev/context/execution/v1"
+  "@id":
+    "$ref": "#/$defs/graphId"
+  "@graph":
+    type: array
+    minItems: 3
+    items:
+      oneOf:
+        - "$ref": "#/$defs/record"
+        - "$ref": "#/$defs/artifactPointer"
+        - "$ref": "#/$defs/commission"
+        - "$ref": "#/$defs/instruction"
+        - "$ref": "#/$defs/opening"
+        - "$ref": "#/$defs/implementerClosure"
+        - "$ref": "#/$defs/validatorClosure"
+        - "$ref": "#/$defs/unitClosure"
+"$defs":
+  executionId:
+    type: string
+    pattern: "^exec_[0-9]{13}_[0-9a-f]{12}$"
+  graphId:
+    type: string
+    pattern: "^https://yeetz\\.dev/graph/execution/exec_[0-9]{13}_[0-9a-f]{12}$"
+  recordId:
+    type: string
+    pattern: "^https://yeetz\\.dev/execution/exec_[0-9]{13}_[0-9a-f]{12}$"
+  transitionId:
+    type: string
+    pattern: "^https://yeetz\\.dev/execution/exec_[0-9]{13}_[0-9a-f]{12}/transition/[0-9]{4}$"
+  artifactId:
+    type: string
+    pattern: "^https://yeetz\\.dev/execution/exec_[0-9]{13}_[0-9a-f]{12}/artifact/[a-z0-9][a-z0-9-]{0,63}$"
+  actorId:
+    type: string
+    pattern: "^urn:yeetz:actor:[a-z0-9][a-z0-9._-]{0,95}$"
+  repository:
+    type: string
+    pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    maxLength: 160
+  gitCommit:
+    type: string
+    pattern: "^[0-9a-f]{40}$"
+  digest:
+    type: string
+    pattern: "^[0-9a-f]{64}$"
+  path:
+    type: string
+    minLength: 1
+    maxLength: 512
+    pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9._() /-]+$"
+  boundedText:
+    type: string
+    minLength: 1
+    maxLength: 2048
+  shortText:
+    type: string
+    minLength: 1
+    maxLength: 1024
+  criterion:
+    type: string
+    minLength: 1
+    maxLength: 512
+  sequence:
+    type: integer
+    minimum: 0
+    maximum: 9999
+  orchestrator:
+    const: "https://yeetz.dev/definition/orchestrator"
+  implementer:
+    const: "https://yeetz.dev/definition/implementer"
+  validator:
+    const: "https://yeetz.dev/definition/validator"
+  workerClass:
+    enum:
+      - "https://yeetz.dev/definition/implementer"
+      - "https://yeetz.dev/definition/validator"
+  lane:
+    enum:
+      - "https://yeetz.dev/definition/lane-10000"
+      - "https://yeetz.dev/definition/lane-20000"
+      - "https://yeetz.dev/definition/lane-30000"
+      - "https://yeetz.dev/definition/lane-40000"
+      - "https://yeetz.dev/definition/lane-50000"
+      - "https://yeetz.dev/definition/lane-60000"
+      - "https://yeetz.dev/definition/lane-70000"
+      - "https://yeetz.dev/definition/lane-80000"
+      - "https://yeetz.dev/definition/lane-90000"
+  pointerList:
+    type: array
+    minItems: 1
+    items:
+      "$ref": "#/$defs/artifactId"
+    uniqueItems: true
+  record:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - schemaVersion
+      - executionId
+      - repository
+      - sourceRevision
+    properties:
+      "@id":
+        "$ref": "#/$defs/recordId"
+      "@type":
+        const: "https://yeetz.dev/ontology/ExecutionRecord"
+      schemaVersion:
+        const: 1
+      executionId:
+        "$ref": "#/$defs/executionId"
+      repository:
+        "$ref": "#/$defs/repository"
+      sourceRevision:
+        const: "__EXECUTION_SOURCE_REVISION__"
+  artifactPointer:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - artifactKind
+      - repository
+      - revisionScope
+      - path
+      - sha256
+    properties:
+      "@id":
+        "$ref": "#/$defs/artifactId"
+      "@type":
+        const: "https://yeetz.dev/ontology/ArtifactPointer"
+      artifactKind:
+        enum:
+          - "https://yeetz.dev/artifact-kind/input"
+          - "https://yeetz.dev/artifact-kind/candidate"
+          - "https://yeetz.dev/artifact-kind/validation-report"
+          - "https://yeetz.dev/artifact-kind/required-tests"
+          - "https://yeetz.dev/artifact-kind/evidence"
+      repository:
+        "$ref": "#/$defs/repository"
+      revisionScope:
+        enum:
+          - "https://yeetz.dev/revision-scope/source"
+          - "https://yeetz.dev/revision-scope/git-commit"
+      gitCommit:
+        "$ref": "#/$defs/gitCommit"
+      path:
+        "$ref": "#/$defs/path"
+      sha256:
+        "$ref": "#/$defs/digest"
+    allOf:
+      - if:
+          properties:
+            revisionScope:
+              const: "https://yeetz.dev/revision-scope/git-commit"
+          required:
+            - revisionScope
+        then:
+          required:
+            - gitCommit
+        else:
+          not:
+            required:
+              - gitCommit
+  commission:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - actor
+      - causalClass
+      - lane
+      - intent
+      - acceptanceCriteria
+      - admittedActs
+      - consumes
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/Commission"
+      sequence:
+        const: 0
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/orchestrator"
+      lane:
+        "$ref": "#/$defs/lane"
+      intent:
+        "$ref": "#/$defs/boundedText"
+      acceptanceCriteria:
+        type: array
+        minItems: 1
+        maxItems: 16
+        uniqueItems: true
+        items:
+          "$ref": "#/$defs/criterion"
+      admittedActs:
+        type: array
+        minItems: 3
+        uniqueItems: true
+        items:
+          enum:
+            - "https://yeetz.dev/act/implement"
+            - "https://yeetz.dev/act/validate"
+            - "https://yeetz.dev/act/correct"
+            - "https://yeetz.dev/act/land"
+            - "https://yeetz.dev/act/close"
+      consumes:
+        "$ref": "#/$defs/pointerList"
+  instruction:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - previous
+      - actor
+      - causalClass
+      - targetClass
+      - intent
+      - consumes
+      - requiredTests
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/Instruction"
+      sequence:
+        "$ref": "#/$defs/sequence"
+      previous:
+        "$ref": "#/$defs/transitionId"
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/orchestrator"
+      targetClass:
+        "$ref": "#/$defs/workerClass"
+      intent:
+        "$ref": "#/$defs/boundedText"
+      consumes:
+        "$ref": "#/$defs/pointerList"
+      requiredTests:
+        "$ref": "#/$defs/pointerList"
+      subjectCandidate:
+        "$ref": "#/$defs/artifactId"
+      correctsInstruction:
+        "$ref": "#/$defs/transitionId"
+  opening:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - previous
+      - actor
+      - causalClass
+      - instruction
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/Opening"
+      sequence:
+        "$ref": "#/$defs/sequence"
+      previous:
+        "$ref": "#/$defs/transitionId"
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/workerClass"
+      instruction:
+        "$ref": "#/$defs/transitionId"
+  implementerClosure:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - previous
+      - actor
+      - causalClass
+      - opening
+      - outcomeSummary
+      - candidate
+      - evidence
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/Closure"
+      sequence:
+        "$ref": "#/$defs/sequence"
+      previous:
+        "$ref": "#/$defs/transitionId"
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/implementer"
+      opening:
+        "$ref": "#/$defs/transitionId"
+      outcomeSummary:
+        "$ref": "#/$defs/shortText"
+      candidate:
+        "$ref": "#/$defs/artifactId"
+      evidence:
+        "$ref": "#/$defs/pointerList"
+  validatorClosure:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - previous
+      - actor
+      - causalClass
+      - opening
+      - outcomeSummary
+      - candidate
+      - validationReport
+      - disposition
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/Closure"
+      sequence:
+        "$ref": "#/$defs/sequence"
+      previous:
+        "$ref": "#/$defs/transitionId"
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/validator"
+      opening:
+        "$ref": "#/$defs/transitionId"
+      outcomeSummary:
+        "$ref": "#/$defs/shortText"
+      candidate:
+        "$ref": "#/$defs/artifactId"
+      validationReport:
+        "$ref": "#/$defs/artifactId"
+      disposition:
+        enum:
+          - "https://yeetz.dev/disposition/accepting"
+          - "https://yeetz.dev/disposition/non-accepting"
+  unitClosure:
+    type: object
+    additionalProperties: false
+    required:
+      - "@id"
+      - "@type"
+      - sequence
+      - previous
+      - actor
+      - causalClass
+      - outcome
+      - outcomeSummary
+      - references
+    properties:
+      "@id":
+        "$ref": "#/$defs/transitionId"
+      "@type":
+        const: "https://yeetz.dev/ontology/UnitClosure"
+      sequence:
+        "$ref": "#/$defs/sequence"
+      previous:
+        "$ref": "#/$defs/transitionId"
+      actor:
+        "$ref": "#/$defs/actorId"
+      causalClass:
+        "$ref": "#/$defs/orchestrator"
+      outcome:
+        enum:
+          - "https://yeetz.dev/outcome/completed"
+          - "https://yeetz.dev/outcome/parked"
+          - "https://yeetz.dev/outcome/stopped"
+      outcomeSummary:
+        "$ref": "#/$defs/shortText"
+      references:
+        "$ref": "#/$defs/pointerList"

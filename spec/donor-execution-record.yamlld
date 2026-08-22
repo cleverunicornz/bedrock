@@ -1,0 +1,60 @@
+# Live revision-three canary republished for cache-projection qualification.
+"@context": "https://yeetz.dev/context/execution/v1"
+"@id": "https://yeetz.dev/graph/execution/exec_1786896702093_000000007493"
+"@graph":
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493"
+    "@type": "https://yeetz.dev/ontology/ExecutionRecord"
+    schemaVersion: 1
+    executionId: "exec_1786896702093_000000007493"
+    repository: "cleverunicornz/yeet-code"
+    sourceRevision: "__EXECUTION_SOURCE_REVISION__"
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493/artifact/inherited-contract"
+    "@type": "https://yeetz.dev/ontology/ArtifactPointer"
+    artifactKind: "https://yeetz.dev/artifact-kind/input"
+    repository: "cleverunicornz/yeet-code"
+    revisionScope: "https://yeetz.dev/revision-scope/git-commit"
+    gitCommit: "089ed6efcb2f000294392e5eddef1171b29aa397"
+    path: "architecture/work-protocol/AGENTS.md"
+    sha256: "14880d10a7b7b147f17a1e74cde384d3c683c76ec5ef9a6e2eebb7fa42b3af28"
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493/artifact/required-tests"
+    "@type": "https://yeetz.dev/ontology/ArtifactPointer"
+    artifactKind: "https://yeetz.dev/artifact-kind/required-tests"
+    repository: "cleverunicornz/yeet-code"
+    revisionScope: "https://yeetz.dev/revision-scope/source"
+    path: "future-epoch-candidate/execution-graph/fixtures/referenced/required-tests.md"
+    sha256: "2ced6c4141bde7975127a16eab449276629e75e052bfd64fe664d9b87da17483"
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0000"
+    "@type": "https://yeetz.dev/ontology/Commission"
+    sequence: 0
+    actor: "urn:yeetz:actor:gateway-v3-integration-orchestrator"
+    causalClass: "https://yeetz.dev/definition/orchestrator"
+    lane: "https://yeetz.dev/definition/lane-90000"
+    intent: "Prove that one exact pushed execution projection reaches a clean external harness through Gateway V3 without repository mutation."
+    acceptanceCriteria:
+      - "The selected worker returns only the sentinel carried by its bound execution generation."
+      - "The worker performs no tool call and makes no repository mutation."
+    admittedActs:
+      - "https://yeetz.dev/act/implement"
+      - "https://yeetz.dev/act/validate"
+      - "https://yeetz.dev/act/close"
+    consumes:
+      - "https://yeetz.dev/execution/exec_1786896702093_000000007493/artifact/inherited-contract"
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0001"
+    "@type": "https://yeetz.dev/ontology/Instruction"
+    sequence: 1
+    previous: "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0000"
+    actor: "urn:yeetz:actor:gateway-v3-integration-orchestrator"
+    causalClass: "https://yeetz.dev/definition/orchestrator"
+    targetClass: "https://yeetz.dev/definition/implementer"
+    intent: "Do not inspect or modify files, call tools, or perform any other action. On this turn and every later turn, reply with exactly GATEWAY_V3_EXECUTION_REVISION_THREE_1786896702093_7493 and nothing else."
+    consumes:
+      - "https://yeetz.dev/execution/exec_1786896702093_000000007493/artifact/inherited-contract"
+    requiredTests:
+      - "https://yeetz.dev/execution/exec_1786896702093_000000007493/artifact/required-tests"
+  - "@id": "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0002"
+    "@type": "https://yeetz.dev/ontology/Opening"
+    sequence: 2
+    previous: "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0001"
+    actor: "urn:yeetz:actor:gateway-v3-integration-implementer"
+    causalClass: "https://yeetz.dev/definition/implementer"
+    instruction: "https://yeetz.dev/execution/exec_1786896702093_000000007493/transition/0001"
