@@ -1,4 +1,4 @@
-# Installed by bedrock v0.3.0 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
+# Installed by bedrock v0.4.0 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
 # Bedrock operating reference — the base protocol
 
 This is the standardized minimum every bedrock repo builds on, plus the
@@ -104,8 +104,8 @@ Profile rules are enforced by `bedrock check` (C2–C5/C7–C9):
 1. Write a vertex at `situation/<ns>/<local-name>.yamlld`.
 2. Run `bedrock check` — failures are named and line-cited
    (`RULE path:line message`); fix and rerun.
-3. Run `bedrock build` — compiles `situation/graph.trig` and regenerates
-   the root `AGENTS.md`.
+3. Run `bedrock build` — compiles the root `AGENTS.md`: the complete
+   TriG graph.
 4. Commit the source vertex AND the generated output together.
 5. Open a PR; a human merges.
 
@@ -158,7 +158,7 @@ reason and its flip conditions.
 following:
 
 - no new top-level directories or namespaces under `situation/`;
-- no hand-editing of `AGENTS.md`, `situation/graph.trig`, the base schemas
+- no hand-editing of `AGENTS.md` (the compiled graph), the base schemas
   in `seed/schemas/`, `seed/context.yamlld`, or this reference;
 - no writing anything outside `situation/` (and the installed base files)
   — except the root `AGENTS.md`, which `build` regenerates;
@@ -177,6 +177,6 @@ Routing law when one needs changing:
 
 ## Re-situate
 
-`bedrock build` regenerates `AGENTS.md` from `situation/`. After work that
-changes reality, re-run it and commit the emitted register — knowledge, not
-rules.
+`bedrock build` regenerates `AGENTS.md` — the compiled graph — from
+`situation/`. After work that changes reality, re-run it and commit the
+emitted graph: knowledge, not rules.

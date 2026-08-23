@@ -17,6 +17,26 @@ fn check_fails_with(s: &Scratch, rule: &str) -> String {
     combined
 }
 
+/// Every `.trig` file under `dir` (recursive) — build must leave none.
+fn stray_trig(dir: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "trig") {
+                out.push(p.to_string_lossy().into_owned());
+            }
+        }
+    }
+    out
+}
+
 #[test]
 fn c1_placement_polarity() {
     let good = materialize("C1/good");
@@ -88,20 +108,31 @@ fn c5_edge_resolution_polarity() {
 }
 
 #[test]
-fn c6_determinism_polarity() {
+fn c1_drift_polarity() {
+    // 0.4.0: C1 is the single drift rule — the committed root AGENTS.md
+    // must byte-match regeneration. Good: an untouched build output.
     let good = materialize("C6/good");
     build_and_check_ok(&good);
 
-    // Tamper the committed graph.trig → C6 drift.
-    let bad = materialize("C6/bad");
+    // Bad: a hand-edited AGENTS.md — a line appended inside a graph block,
+    // so regeneration differs — fails C1 naming AGENTS.md.
+    let bad = materialize("C6/good");
     build_and_check_ok(&bad);
-    let trig = bad.path().join("situation").join("graph.trig");
-    let mut bytes = std::fs::read(&trig).unwrap();
-    // Flip a byte late in the file (prelude is fixed; flip a literal digit).
-    *bytes.last_mut().unwrap() ^= 0x01;
-    let _ = std::fs::write(&trig, bytes);
-    let combined = check_fails_with(&bad, "C6");
-    assert!(combined.contains("graph.trig"), "{combined}");
+    let agents = bad.path().join("AGENTS.md");
+    let md = std::fs::read_to_string(&agents).unwrap();
+    let close = md.rfind('}').expect("a named-graph closer to edit inside");
+    let tampered = format!("{}# a hand-edited line\n{}", &md[..close], &md[close..]);
+    assert_ne!(tampered, md);
+    std::fs::write(&agents, tampered).unwrap();
+    let combined = check_fails_with(&bad, "C1");
+    assert!(
+        combined.contains("C1 AGENTS.md"),
+        "drift named as C1 on AGENTS.md: {combined}"
+    );
+    assert!(
+        combined.contains("root AGENTS.md (the compiled graph) is out of date or hand-edited"),
+        "drift message present: {combined}"
+    );
 }
 
 #[test]
@@ -276,103 +307,207 @@ fn c10_digest_skew_polarity() {
 }
 
 #[test]
-fn plan_trig_projection_is_written_and_deterministic() {
-    // C1/good carries a plan vertex → build emits situation/plan/plan-a.trig.
+fn build_emits_only_agents_md() {
+    // 0.4.0: ONE artifact. Build writes the root AGENTS.md and nothing
+    // else — no situation/graph.trig, no situation/plan/*.trig — and a
+    // repo migrating from <=0.3.0 (legacy artifacts still on disk) builds
+    // clean: check flags them, build deletes them.
     let s = materialize("C1/good");
-    build_and_check_ok(&s);
-    let p = s.path().join("situation/plan/plan-a.trig");
+    // Plant the legacy artifacts exactly as <=0.3.0 left them.
+    std::fs::write(s.path().join("situation/graph.trig"), "# legacy graph\n").unwrap();
+    std::fs::write(
+        s.path().join("situation/plan/plan-a.trig"),
+        "# legacy plan\n",
+    )
+    .unwrap();
+
+    // check (the CI gate) flags both as C1 legacy artifacts, by path.
+    let combined = check_fails_with(&s, "C1");
     assert!(
-        p.exists(),
-        "per-plan .trig must be emitted next to the plan source"
+        combined.contains("legacy generated artifact"),
+        "legacy message present: {combined}"
     );
-    let first = std::fs::read(&p).unwrap();
-    // Rebuild → byte-stable.
-    let (c, _, _) = run(&["build", s.path().to_str().unwrap()], &manifest());
-    assert_eq!(c, 0);
-    let second = std::fs::read(&p).unwrap();
-    assert_eq!(first, second, "plan projection must be byte-stable (C6)");
-    let text = String::from_utf8_lossy(&first);
     assert!(
-        text.contains("plan-a"),
-        "plan projection names the plan: {text}"
+        combined.contains("situation/graph.trig")
+            && combined.contains("situation/plan/plan-a.trig"),
+        "legacy paths named: {combined}"
     );
+
+    // build deletes them, emits only AGENTS.md, and passes.
+    let (c, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    let combined = format!("{out}\n{err}");
+    assert_eq!(c, 0, "build must clean legacy artifacts:\n{combined}");
+    assert!(
+        out.contains("bedrock build: AGENTS.md (the compiled graph) up to date"),
+        "build stdout names the single artifact: {out}"
+    );
+    assert!(
+        s.path().join("AGENTS.md").exists(),
+        "the one artifact exists"
+    );
+    assert!(
+        stray_trig(&s.path().join("situation")).is_empty(),
+        "build leaves no .trig under situation/"
+    );
+    // The migrated repo now checks clean.
+    let (c2, out2, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c2, 0, "post-migration check passes: {out2}");
 }
 
 #[test]
 fn commit_idempotence_deterministic_regenerate() {
-    // Build twice → identical graph.trig + AGENTS.md (C6 byte stability).
+    // Build twice → byte-identical AGENTS.md (C6 byte stability) and no
+    // resurrected .trig under situation/ — one artifact stays one artifact.
     let s = materialize("C1/good");
     build_and_check_ok(&s);
-    let g1 = std::fs::read(s.path().join("situation/graph.trig")).unwrap();
     let a1 = std::fs::read(s.path().join("AGENTS.md")).unwrap();
-    let (c, _, _) = run(&["build", s.path().to_str().unwrap()], &manifest());
-    assert_eq!(c, 0);
-    let g2 = std::fs::read(s.path().join("situation/graph.trig")).unwrap();
+    let (c, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c, 0, "{out}\n{err}");
     let a2 = std::fs::read(s.path().join("AGENTS.md")).unwrap();
-    assert_eq!(g1, g2, "graph.trig must be byte-stable");
     assert_eq!(a1, a2, "AGENTS.md must be byte-stable");
+    assert!(
+        stray_trig(&s.path().join("situation")).is_empty(),
+        "rebuild must not resurrect .trig artifacts"
+    );
 }
 
 #[test]
-fn agents_md_register_content() {
+fn agents_md_compiled_graph_content() {
+    // 0.4.0: ONE artifact — the root AGENTS.md IS the compiled graph: a
+    // `#`-comment preamble (so the whole file stays valid TriG) followed
+    // by the complete TriG body. No prose projection sections.
     let s = materialize("C1/good");
     build_and_check_ok(&s);
     let md = std::fs::read_to_string(s.path().join("AGENTS.md")).unwrap();
-    // Invariants heading + at least the one fixture invariant's statement.
+    let v = env!("CARGO_PKG_VERSION");
+
+    // Machine-owned stamp: a TriG comment, not an HTML comment.
     assert!(
-        md.contains("## Invariants"),
-        "register has invariants heading"
+        md.starts_with(&format!(
+            "# generated by bedrock v{v}; do not edit; source: situation/\n"
+        )),
+        "AGENTS.md opens with the machine-owned TriG comment: {md}"
+    );
+    assert!(
+        !md.contains("<!--"),
+        "no HTML comments — the file is TriG: {md}"
+    );
+
+    // The preamble is pure `#` comments up to the blank line before the
+    // body (legal TriG end-to-end).
+    let (preamble, body) = md
+        .split_once("\n\n")
+        .expect("a blank line separates preamble from graph body");
+    assert!(
+        preamble.lines().all(|l| l.starts_with('#')),
+        "every preamble line is a TriG comment: {preamble}"
+    );
+
+    // How-to-read block + title: the repo dir name (this fixture declares
+    // no identity vertex).
+    assert!(
+        preamble.contains("This file IS the situation graph"),
+        "how-to-read names the file itself: {preamble}"
+    );
+    let repo_name = s
+        .path()
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+    assert!(
+        preamble.contains(&format!("# {repo_name}\n")),
+        "title line names the repo dir: {preamble}"
+    );
+
+    // Operating section: the verb-framing line, the five verb lines, the
+    // authoring loop — and the Decisions line verbatim, between the chain
+    // and the base-protocol pointer.
+    assert!(
+        preamble.contains("# Operating this repository:"),
+        "{preamble}"
+    );
+    assert!(
+        preamble.contains("# - Work happens on verb-prefixed branches"),
+        "verb-framing line: {preamble}"
+    );
+    for verb in ["think", "plan", "execute", "reflect", "deploy"] {
+        assert!(
+            preamble.contains(&format!("# - {verb}/ ")),
+            "verb line {verb}/: {preamble}"
+        );
+    }
+    assert!(preamble.contains("# - Authoring loop:"), "{preamble}");
+    assert!(
+        preamble.contains("# - Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md"),
+        "the decisions line rendered verbatim: {preamble}"
+    );
+    let chain_pos = preamble.find("# - The chain:").unwrap();
+    let decisions_pos = preamble.find("# - Decisions are records too:").unwrap();
+    let pointer_pos = preamble.find("# - The base protocol, in full").unwrap();
+    assert!(
+        chain_pos < decisions_pos && decisions_pos < pointer_pos,
+        "decisions line sits between the chain and the base-protocol pointer: {preamble}"
+    );
+
+    // Digest marker: 64 hex chars pinning the body bytes.
+    let marker = format!("# bedrock {v} digest ");
+    let line = preamble
+        .lines()
+        .find(|l| l.starts_with(&marker))
+        .expect("digest marker line");
+    let rest = &line[marker.len()..];
+    let (hex, tail) = rest.split_at(64);
+    assert!(
+        hex.chars().all(|c| c.is_ascii_hexdigit()),
+        "digest is 64 hex chars: {line}"
+    );
+    assert!(
+        tail.starts_with(" (regenerated by `bedrock build`"),
+        "digest marker names regeneration: {line}"
+    );
+
+    // The body: the complete TriG — the fixed @prefix prelude, the named
+    // namespace graphs, and the compiler-emitted document edge pointing
+    // each vertex at its own source file.
+    for p in [
+        "@prefix rdf: ",
+        "@prefix xsd: ",
+        "@prefix bedrock: ",
+        "@prefix graph: ",
+    ] {
+        assert!(body.contains(p), "prefix prelude carries {p}: {body}");
+    }
+    assert!(body.contains("graph:definition {"), "{body}");
+    assert!(body.contains("graph:plan {"), "{body}");
+    assert!(
+        body.contains(
+            "bedrock:document bedrock:path\\/situation\\/definition\\/invariant-01.yamlld"
+        ),
+        "document edge points at the vertex source: {body}"
+    );
+    assert!(
+        body.contains("bedrock:document bedrock:path\\/situation\\/plan\\/plan-a.yamlld"),
+        "plan vertex carries its document edge: {body}"
     );
     assert!(
         md.contains("A fixture invariant that must compile clean."),
-        "register renders vertex statements: {md}"
+        "the graph embeds vertex statements: {md}"
     );
-    // Breadcrumbs heading (none declared in this fixture → placeholder).
-    assert!(md.contains("## Breadcrumbs"));
-    assert!(md.contains("## Where things live"));
-    // 0.2.0 base protocol: operating section with THE CHAIN in one line.
+
+    // No markdown projection sections survive anywhere.
+    for stale in ["## Invariants", "## Breadcrumbs", "## Where things live"] {
+        assert!(!md.contains(stale), "no `{stale}` section: {md}");
+    }
     assert!(
-        md.contains("## Operating this repository"),
-        "operating section present: {md}"
+        !md.lines().any(|l| l.starts_with("## ")),
+        "no markdown ## sections at all: {md}"
     );
-    assert!(
-        md.contains("every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured"),
-        "the chain rendered in one line: {md}"
-    );
-    // 0.3.0 base protocol: the Decisions line, inserted between the chain
-    // line and the base-protocol pointer line.
-    assert!(
-        md.contains("- Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md"),
-        "the decisions line rendered verbatim: {md}"
-    );
-    let decisions_pos = md.find("- Decisions are records too:").unwrap();
-    let chain_pos = md.find("- The chain:").unwrap();
-    let pointer_pos = md.find("- The base protocol, in full").unwrap();
-    assert!(
-        chain_pos < decisions_pos && decisions_pos < pointer_pos,
-        "decisions line sits between the chain and the base-protocol pointer: {md}"
-    );
-    assert!(
-        md.contains("situation/references/bedrock-operating.md"),
-        "pointer to the operating reference: {md}"
-    );
-    // Terminal generator+digest marker.
-    assert!(
-        md.contains("bedrock ") && md.contains("digest "),
-        "marker line present: {md}"
-    );
-    // 0.2.1 provenance: the register's first line announces it is generated.
-    assert!(
-        md.starts_with("<!-- generated by bedrock v"),
-        "register opens with the machine-owned comment: {md}"
-    );
-    // No TriG embedded (register is a projection).
-    assert!(!md.contains("@prefix"), "AGENTS.md must not embed TriG");
 }
 
 #[test]
-fn check_unbuilt_repo_flags_c6() {
-    // A repo whose situation/ changed since the last build must drift C6.
+fn check_flags_drifted_source_c1() {
+    // A repo whose situation/ changed since the last build drifts: the
+    // committed AGENTS.md no longer matches regeneration → C1.
     let s = materialize("C3/good");
     build_and_check_ok(&s);
     // Change actual data: a comment would not alter quads — the statement
@@ -385,13 +520,16 @@ fn check_unbuilt_repo_flags_c6() {
     );
     assert_ne!(changed, text);
     std::fs::write(&v, changed).unwrap();
-    let combined = check_fails_with(&s, "C6");
-    assert!(combined.contains("graph.trig"), "{combined}");
+    let combined = check_fails_with(&s, "C1");
+    assert!(
+        combined.contains("C1 AGENTS.md"),
+        "drift named as C1 on AGENTS.md: {combined}"
+    );
 }
 
 #[test]
-fn build_regenerates_a_stale_register() {
-    // build must self-heal its own outputs: a hand-mangled AGENTS.md is
+fn build_regenerates_a_hand_edited_agents_md() {
+    // build must self-heal its own output: a hand-mangled AGENTS.md is
     // regenerated, not a blocker (the strict drift gate is `check`, CI's).
     let s = materialize("C1/good");
     build_and_check_ok(&s);
@@ -399,9 +537,16 @@ fn build_regenerates_a_stale_register() {
     std::fs::write(&agents, b"# sabotage\n").unwrap();
     let (c, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
     let combined = format!("{out}\n{err}");
-    assert_eq!(c, 0, "build must regenerate the register:\n{combined}");
+    assert_eq!(c, 0, "build must regenerate the graph:\n{combined}");
     let md = std::fs::read_to_string(&agents).unwrap();
-    assert!(md.contains("## Invariants"), "register restored: {md}");
+    assert!(
+        md.starts_with("# generated by bedrock v"),
+        "artifact restored: {md}"
+    );
+    assert!(
+        md.contains("@prefix bedrock:"),
+        "the compiled graph body is restored: {md}"
+    );
     // Drift remains detectable by check alone.
     std::fs::write(&agents, b"# sabotage\n").unwrap();
     let (c2, out2, err2) = run(&["check", s.path().to_str().unwrap()], &manifest());

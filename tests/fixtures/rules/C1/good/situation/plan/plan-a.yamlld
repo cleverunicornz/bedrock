@@ -2,7 +2,7 @@
 "@id": "https://yeetz.dev/bedrock/vertex/plan-a"
 "@type": "https://yeetz.dev/bedrock/ontology/Plan"
 label: "Plan A"
-intent: "A trivial plan fixture that projects to plan-a.trig."
+intent: "A trivial plan fixture."
 acceptanceCriteria:
   - "The plan compiles."
 consumes:

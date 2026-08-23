@@ -49,14 +49,14 @@ it by hand; delete any other copy. This law is non-negotiable.
 1. Write `situation/<ns>/<local-name>.yamlld`: `@id`, `@type`, `label` or a
    one-line description, and typed edges. Copy an existing vertex's shape;
    add a `statement` to invariants.
-2. Run `bedrock build`. It re-checks, compiles YAML-LD to deterministic TriG
-   (`situation/graph.trig`), and regenerates `AGENTS.md`.
+2. Run `bedrock build`. It re-checks and compiles YAML-LD into the root
+   `AGENTS.md` — the complete deterministic TriG graph.
 3. If check fails: one violation per line, `RULE path:line message`. Fix the
    cause — `build` refuses to proceed while check is red.
 
 ## 6. Commit and PR
 
-Commit the vertices, `situation/graph.trig`, and regenerated `AGENTS.md`;
+Commit the vertices and the regenerated root `AGENTS.md` (the compiled graph);
 open a pull request. A human merges; you do not merge your own work.
 
 Summary: skeleton, floor, workflow hook, and root AGENTS.md are live. Add
