@@ -1,6 +1,0 @@
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/invariant-01"
-"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
-label: "Fixture invariant"
-layer: floor
-statement: "C6 polarity fixture."

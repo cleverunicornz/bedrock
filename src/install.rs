@@ -12,26 +12,28 @@ use std::process::Command;
 /// must never run for `check`/`build`, only `init`/`adopt`.
 pub const VERSION_GATE_ENABLED: bool = false;
 
-/// `bedrock build` — compile TriG + regenerate AGENTS.md.
+/// `bedrock build` — compile the single artifact: the root AGENTS.md (the
+/// complete TriG graph, 0.4.0 base protocol).
 ///
 /// Validates the *source* (check::collect: C1 placement, C2–C5, C7) and
-/// aborts on any source violation; then regenerates its own outputs
-/// (graph.trig, plan projections, AGENTS.md) — a stale register is exactly
-/// what build fixes, so the drift checks (C1-AGENTS, C6-committed) are only
-/// enforced by `check`, the CI gate, and verified against the fresh state
-/// after writing.
+/// aborts on any source violation; then regenerates its own output — a
+/// stale AGENTS.md is exactly what build fixes, so the drift check (C1)
+/// is only enforced by `check`, the CI gate, and verified against the
+/// fresh state after writing.
 pub fn build(root: &Path) -> Result<(), Fatal> {
-    let c = regenerate_and_verify(root, "build")?;
-    println!(
-        "bedrock build: situation/graph.trig + {} plan projection(s) + AGENTS.md up to date",
-        c.plan_trigs.len()
-    );
+    regenerate_and_verify(root, "build")?;
+    println!("bedrock build: AGENTS.md (the compiled graph) up to date");
     Ok(())
 }
 
-/// Shared tail of `build` and `update`: validate the source, write
-/// artifacts, then run the full `check` on the fresh state.
+/// Shared tail of `build` and `update`: clean legacy artifacts, validate
+/// the source, write the artifact, then run the full `check` on the fresh
+/// state.
 fn regenerate_and_verify(target: &Path, verb: &str) -> Result<Compiled, Fatal> {
+    // Legacy cleanup FIRST (0.4.0): the separate graph + per-plan .trig
+    // artifacts are deleted before the source check, so a repo migrating
+    // from <=0.3.0 builds clean.
+    remove_legacy_artifacts(target)?;
     let (violations, compiled) = check::collect(target)?;
     if !violations.is_empty() {
         print_violations(&violations);
@@ -51,16 +53,34 @@ fn regenerate_and_verify(target: &Path, verb: &str) -> Result<Compiled, Fatal> {
     Ok(c)
 }
 
-/// Write graph.trig, per-plan .trig, and AGENTS.md (SPINE §5).
-pub fn write_artifacts(root: &Path, c: &Compiled) -> Result<(), Fatal> {
-    let graph_path = root.join("situation").join("graph.trig");
-    std::fs::write(&graph_path, &c.trig_bytes)
-        .map_err(|e| Fatal(format!("cannot write {}: {e}", graph_path.display())))?;
-    for (rel, bytes) in &c.plan_trigs {
-        let p = root.join(rel);
-        std::fs::write(&p, bytes)
-            .map_err(|e| Fatal(format!("cannot write {}: {e}", p.display())))?;
+/// Delete legacy generated .trig artifacts from <=0.3.0 (SPINE §5, 0.4.0):
+/// one artifact now — the root AGENTS.md.
+fn remove_legacy_artifacts(root: &Path) -> Result<(), Fatal> {
+    let legacy_graph = root.join("situation").join("graph.trig");
+    if legacy_graph.exists()
+        && let Err(e) = std::fs::remove_file(&legacy_graph)
+    {
+        return Err(Fatal(format!(
+            "cannot remove {}: {e}",
+            legacy_graph.display()
+        )));
     }
+    if let Ok(entries) = std::fs::read_dir(root.join("situation").join("plan")) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.extension().is_some_and(|e| e == "trig")
+                && let Err(e) = std::fs::remove_file(&p)
+            {
+                return Err(Fatal(format!("cannot remove {}: {e}", p.display())));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Write the single generated artifact: the root AGENTS.md — the compiled
+/// graph (SPINE §5, 0.4.0).
+pub fn write_artifacts(root: &Path, c: &Compiled) -> Result<(), Fatal> {
     let agents = root.join("AGENTS.md");
     std::fs::write(&agents, c.agents_md.as_bytes())
         .map_err(|e| Fatal(format!("cannot write {}: {e}", agents.display())))?;
@@ -530,11 +550,8 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
     }
 
     // Then check + build against the refreshed state.
-    let c = regenerate_and_verify(target, "update")?;
-    println!(
-        "bedrock update: check + build pass ({} plan projection(s) written)",
-        c.plan_trigs.len()
-    );
+    regenerate_and_verify(target, "update")?;
+    println!("bedrock update: check + build pass (AGENTS.md — the compiled graph — regenerated)");
     Ok(())
 }
 

@@ -1,8 +1,9 @@
 //! # bedrock
 //!
 //! A single Rust binary that seeds a repo with a YAML-LD `situation/`
-//! structure, validates it, and compiles it into one generated `AGENTS.md`
-//! register plus a deterministic [TriG] graph (`situation/graph.trig`).
+//! structure, validates it, and compiles it into ONE generated artifact:
+//! the root `AGENTS.md` — the complete [TriG] graph itself, injected into
+//! every agent context by the harness.
 //!
 //! Six commands:
 //!
@@ -13,8 +14,8 @@
 //!   plus an epoch record vertex declaring the cut line.
 //! - `bedrock check [DIR]` — validate `situation/` (SPINE rules C1–C10); CI
 //!   entrypoint, exit 1 with one `RULE path:line message` per violation.
-//! - `bedrock build [DIR]` — `check`, then compile `graph.trig` +
-//!   `situation/plan/*.trig` and regenerate the root `AGENTS.md`.
+//! - `bedrock build [DIR]` — `check`, then compile the root `AGENTS.md` —
+//!   the complete TriG graph.
 //! - `bedrock update [DIR]` — refresh the installed base files (schemas,
 //!   context, operating reference) from this binary's embedded copies, then
 //!   `check` + `build`.

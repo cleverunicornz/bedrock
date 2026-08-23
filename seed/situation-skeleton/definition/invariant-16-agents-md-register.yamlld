@@ -3,9 +3,12 @@
 "@context": "https://yeetz.dev/bedrock/context/v1"
 "@id": "https://yeetz.dev/bedrock/vertex/invariant-16-agents-md-register"
 "@type": "https://yeetz.dev/bedrock/ontology/Invariant"
-label: "AGENTS.md is the register"
+label: "AGENTS.md is the compiled graph"
 layer: "floor"
 statement: >
-  AGENTS.md is the register: one screen of numbered invariants + "where things
-  live" (graph epoch: generated from `situation/`, never hand-edited). After work
-  that changes reality, re-situate it — emit knowledge, never rules.
+  AGENTS.md is the compiled graph: one artifact — the complete TriG compiled
+  from `situation/`, injected into every agent context by the harness. Never
+  hand-edited; always regenerated. Each node carries its description, its
+  relationships, and a pointer to its own source document; humans read prose
+  in `situation/`. After work that changes reality, re-situate it — emit
+  knowledge, never rules.

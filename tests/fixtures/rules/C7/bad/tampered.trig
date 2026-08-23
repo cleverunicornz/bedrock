@@ -1,9 +1,0 @@
-# See tests/check.rs `c7_parseback_gate_polarity`.
-#
-# C7 is a pipeline-integrity gate: no valid-source input can produce TriG
-# that fails to re-parse to the same dataset, so its failing polarity is
-# exercised at unit level against tampered emitted bytes (this file is the
-# tampered-payload artifact the test's corrupted-slice pivot stands in for).
-# Replacing the compiled graph.trig with this would instead trip C6 (byte
-# drift), not C7 — drift is the CI gate; C7 protects the emitter itself.
-tampered payload

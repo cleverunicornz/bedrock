@@ -1,7 +1,7 @@
 # Bedrock CI template — installable by copy into `.github/workflows/`.
 #
 # Runs `bedrock check` + `bedrock build` whenever situation/ changes and
-# fails if the regenerated output (AGENTS.md, situation/graph.trig) differs
+# fails if the regenerated output (the root AGENTS.md, the compiled graph) differs
 # from what is committed. Fork pull requests never run the job.
 
 name: bedrock
@@ -49,8 +49,8 @@ jobs:
 
       - name: Verify generated output is committed
         run: |
-          if ! git diff --exit-code -- AGENTS.md situation/graph.trig; then
-            echo "error: AGENTS.md or situation/graph.trig is out of date." >&2
+          if ! git diff --exit-code -- AGENTS.md; then
+            echo "error: AGENTS.md (the compiled graph) is out of date." >&2
             echo "run 'bedrock build' and commit the regenerated output." >&2
             exit 1
           fi

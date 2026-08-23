@@ -4,7 +4,7 @@ use crate::errors::Fatal;
 use std::path::PathBuf;
 
 pub const HELP: &str = "\
-bedrock — compile an org's situation/ graph into a deterministic TriG register and AGENTS.md projection.
+bedrock — compile an org's situation/ vertices into ONE artifact: the root AGENTS.md, the complete TriG graph the harness injects into every agent.
 
 Usage:
   bedrock init   [--offline] [DIR]   seed a NEW repo: install situation/ skeleton + seed floor
@@ -14,8 +14,8 @@ Usage:
                                      record vertex declaring the cut line.
   bedrock check  [DIR]               validate situation/ (§4 C1–C7); CI entrypoint. Exit 1 with one
                                      `RULE path:line message` per violation.
-  bedrock build  [DIR]               check, then compile situation/graph.trig + situation/plan/*.trig
-                                     and regenerate the root AGENTS.md. Fails if check fails.
+  bedrock build  [DIR]               check, then compile the root AGENTS.md — the complete TriG
+                                     graph. Fails if check fails.
   bedrock update [DIR]               refresh the installed base files (schemas, context, operating
                                      reference, missing workflow template) from this binary's embedded
                                      copies; print exactly what changed; then run check + build.

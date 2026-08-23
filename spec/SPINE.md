@@ -19,8 +19,8 @@ compiled into it and are emitted as output. Three commands plus two internal:
 - `bedrock help` — the contract, short.
 - `bedrock check` — validate `situation/` (§4). CI entrypoint; also run by
   init/adopt before finishing.
-- `bedrock build` — compile TriG + regenerate `AGENTS.md` (§5). Fails if
-  `check` fails.
+- `bedrock build` — compile the root `AGENTS.md` — the complete TriG graph
+  (§5). Fails if `check` fails.
 
 Version gate: once published, the binary checks crates.io for the latest
 version at startup of `init`/`adopt` (never `check`/`build` — CI must not
@@ -95,8 +95,8 @@ YAML (serde_norway, exact-pinned) → serde_json::Value
   → oxjsonld (JSON-LD 1.1, remote loading disabled) → oxrdf Quads
   → deterministic sort (subject IRI, predicate IRI, object, graph)
   → oxttl TriGSerializer (sorted @prefix prelude)
-  → parse-back equivalence check
-  → AGENTS.md generation
+  → AGENTS.md generation (comment preamble + the complete TriG body)
+  → parse-back equivalence on the emitted file itself
 ```
 
 Exact pins in Cargo.toml (`=x.y.z`). Golden tests: fixtures in
@@ -104,22 +104,21 @@ Exact pins in Cargo.toml (`=x.y.z`). Golden tests: fixtures in
 add known-bad fixtures for every check rule C1–C7 (each rule has at least one
 fixture that fails it and one that passes — both-polarity).
 
-AGENTS.md register (generated):
-1. Title line: repo name + one-sentence identity (from the repo's
-   architecture vertex marked `role: identity`).
-2. `## Invariants — breaking any of these is wrong, whatever else is right`:
-   numbered; floor invariants first (vertices tagged `layer: floor`), then
-   repo-local (`layer: situated`), each rendered from the vertex's `statement`
-   field.
-3. `## Breadcrumbs`: one line each from vertices typed Breadcrumb: gate + pointer.
-4. `## Where things live`: generated from vertices carrying `path` edges.
-5. A terminal marker line naming the generator version and source digest, so
-   `check` can detect hand edits.
+AGENTS.md (generated — THE single artifact):
+1. A `#`-comment preamble: the machine stamp; a how-to-read (this file IS
+   the situation graph — descriptions, relationships, per-vertex pointers
+   to the source documents); the identity title line; the operating lines
+   (work verbs as branch prefixes, authoring loop, THE CHAIN, decisions,
+   base-protocol pointer); the digest marker.
+2. The complete compiled TriG body — every vertex, every edge, every named
+   graph. The whole file is valid TriG (the preamble is comments), so C7
+   parse-back reads the same file agents read, and the harness injects the
+   graph into every agent context: delivery is guaranteed, never optional.
 
-The compiled TriG graph is written to `situation/graph.trig` (committed,
-deterministic); AGENTS.md embeds no TriG — it is the human/agent register
-projection only. Plans compile the same way: `bedrock build` also emits
-`situation/plan/<name>.trig` next to each plan source.
+There is no separate graph file and no prose projection: `bedrock build`
+emits exactly one artifact, the root AGENTS.md. Every vertex carries an
+automatic `document` edge to its source file — the pointer is the document
+itself; an agent pulls that thread to ingest the full node context.
 
 ## 6. Epoch record (adopt)
 

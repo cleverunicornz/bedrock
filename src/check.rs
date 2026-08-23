@@ -8,7 +8,7 @@
 //! - C3 LD profile + graph membership + no blank nodes
 //! - C4 namespace schema validation
 //! - C5 edge resolution (vertex @id set or repo path)
-//! - C6 byte determinism vs committed graph.trig/plan projections
+//! - C6 byte determinism: the committed AGENTS.md (the compiled graph) vs regenerated
 //! - C7 parse-back equivalence
 //! - C8 witness gate (base protocol): disposition `done` requires ≥1 witness
 //! - C9 base-type: every vertex @type intersects the base @type set
@@ -26,12 +26,11 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-/// Everything `check` computed; `build` cheap-writes these artifacts.
 pub struct Compiled {
     pub quads: Vec<Quad>,
-    pub trig_bytes: Vec<u8>,
-    /// (`situation/plan/<name>.trig` relative path, bytes)
-    pub plan_trigs: Vec<(PathBuf, Vec<u8>)>,
+    /// The single generated artifact: root AGENTS.md = comment preamble +
+    /// complete TriG body (0.4.0 base protocol — the file the harness
+    /// injects is the graph itself).
     pub agents_md: String,
 }
 
@@ -54,9 +53,9 @@ pub fn run(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal> {
     Ok((out, compiled))
 }
 
-/// Everything except the two drift checks (C6 committed graph.trig vs
-/// regenerated, C1 AGENTS.md vs regenerated). `init`/`adopt` write
-/// artifacts first, then run the full `run()`.
+/// Everything except the drift check (C1: committed AGENTS.md — the compiled
+/// graph — vs regenerated). `init`/`adopt` write artifacts first, then run
+/// the full `run()`.
 pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal> {
     let mut out: Vec<Violation> = Vec::new();
     let seed = resolve_seed(root)?;
@@ -69,7 +68,6 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
 
     // ---------- per-file C2/C3/C4 ----------
     let mut all_quads: Vec<Quad> = Vec::new();
-    let mut plan_quads: Vec<(PathBuf, Vec<Quad>)> = Vec::new();
 
     for f in &sources {
         // C2
@@ -86,15 +84,35 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
         let ns_name: Option<&str> = f.ns.as_deref();
         match compile::expand(value, &rel(&f.rel), &f.text, &registry) {
             Ok(quads) => match compile::remap_graphs(quads, ns_name, &rel(&f.rel), &f.text) {
-                Ok(quads) => {
+                Ok(mut quads) => {
                     // C4
                     out.extend(schemas.validate(ns_name, value, &rel(&f.rel), &f.text));
                     // C8 witness gate (plan + record namespace)
                     out.extend(c8_witness_gate(ns_name, value, &rel(&f.rel), &f.text));
                     // C9 base-type intersection
                     out.extend(c9_base_type(value, &rel(&f.rel), &f.text));
-                    if f.ns.as_deref() == Some("plan") {
-                        plan_quads.push((f.rel.clone(), quads.clone()));
+                    // 0.4.0: the pointer is the document itself — every
+                    // vertex carries an automatic `document` edge to its
+                    // source file, so an agent reading the injected graph
+                    // can ingest the full node context on demand.
+                    if let Some(id) = value.get("@id").and_then(|v| v.as_str())
+                        && let Some(graph) = quads.first().map(|q| q.graph_name.clone())
+                    {
+                        quads.push(Quad {
+                            subject: NamedOrBlankNode::NamedNode(
+                                oxrdf::NamedNode::new(id).expect("vertex @id is absolute"),
+                            ),
+                            predicate: oxrdf::NamedNode::new("https://yeetz.dev/bedrock/document")
+                                .expect("static IRI"),
+                            object: Term::NamedNode(
+                                oxrdf::NamedNode::new(format!(
+                                    "https://yeetz.dev/bedrock/path/{}",
+                                    f.rel.display()
+                                ))
+                                .expect("path IRI is absolute"),
+                            ),
+                            graph_name: graph,
+                        });
                     }
                     all_quads.extend(quads);
                 }
@@ -104,15 +122,18 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
         }
     }
 
-    // ---------- compile + C7 ----------
+    // ---------- compile ----------
     let sorted = compile::sort_quads(all_quads.clone());
     let raw_trig = compile::serialize_trig(&sorted).map_err(Fatal)?;
-    // 0.2.1 provenance: TriG output carries a machine-owned header (`#`
-    // comment; the oxttl parser ignores it, so C7 still holds).
-    let trig = stamp_trig(&raw_trig);
-    // C7: parse-back equivalence — emitted TriG must decode to the dataset
-    // we compiled.
-    if let Some(v) = compile::verify_parseback(&sorted, &trig) {
+
+    // ---------- the single artifact: AGENTS.md IS the graph ----------
+    // Preamble (# comments) + the complete TriG body; the digest pins the
+    // body bytes. C7 parse-back reads the emitted AGENTS.md itself — the
+    // same file agents read (comments are legal TriG).
+    let digest = generate::digest_hex(&raw_trig);
+    let agents = generate::generate_agents_md(root, &sorted, &String::from_utf8_lossy(&raw_trig));
+    let agents = generate::stamp_digest(&agents, &digest);
+    if let Some(v) = compile::verify_parseback(&sorted, agents.as_bytes()) {
         out.push(v);
     }
 
@@ -126,68 +147,17 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
         .collect();
     check_edges(&all_quads, &vertex_ids, root, &mut out);
 
-    // ---------- register ----------
-    let digest = generate::digest_hex(&trig);
-    let agents = generate::generate_agents_md(root, &sorted);
-    let agents = generate::stamp_digest(&agents, &digest);
-
-    let plan_trigs: Vec<(PathBuf, Vec<u8>)> = plan_quads
-        .into_iter()
-        .map(|(rel, quads)| {
-            let bytes = stamp_trig(
-                &compile::serialize_trig(&compile::sort_quads(quads)).expect("plan serializes"),
-            );
-            (rel.clone().with_extension("trig"), bytes)
-        })
-        .collect();
-
     let compiled = Compiled {
         quads: sorted,
-        trig_bytes: trig,
-        plan_trigs,
         agents_md: agents,
     };
     Ok((out, Some(compiled)))
 }
 
-/// C6 committed-projection drift + C1 AGENTS.md drift.
+/// Drift check: the committed AGENTS.md (the compiled graph) must
+/// byte-match regeneration. One artifact, one drift rule (0.4.0).
 pub fn drift_checks(root: &Path, compiled: &Compiled, out: &mut Vec<Violation>) {
-    // C6: committed graph.trig.
-    let graph_path = root.join("situation").join("graph.trig");
-    if graph_path.exists() {
-        match std::fs::read(&graph_path) {
-            Ok(existing) if existing != compiled.trig_bytes => out.push(Violation::new(
-                "C6",
-                "situation/graph.trig",
-                1,
-                "committed graph.trig differs from deterministic regenerated output (run bedrock build)"
-                    .to_string(),
-            )),
-            Ok(_) => {}
-            Err(e) => out.push(Violation::new(
-                "C6",
-                "situation/graph.trig",
-                0,
-                format!("cannot read {}: {e}", graph_path.display()),
-            )),
-        }
-    }
-    // C6: committed plan projections.
-    for (rel, bytes) in &compiled.plan_trigs {
-        let committed = root.join(rel);
-        if committed.exists()
-            && let Ok(existing) = std::fs::read(&committed)
-            && existing != *bytes
-        {
-            out.push(Violation::new(
-                "C6",
-                rel.to_string_lossy().into_owned(),
-                1,
-                "committed plan projection differs from deterministic regenerated output (run bedrock build)"
-                    .to_string(),
-            ));
-        }
-    }
+    // C1: root AGENTS.md — the compiled graph — drift.
 
     // C1: root AGENTS.md hand-edit drift.
     let agents_path = root.join("AGENTS.md");
@@ -196,7 +166,7 @@ pub fn drift_checks(root: &Path, compiled: &Compiled, out: &mut Vec<Violation>) 
             "C1",
             "AGENTS.md",
             1,
-            "root AGENTS.md is out of date or hand-edited; run bedrock build (it is generated — never hand-edited, SPINE §5)"
+            "root AGENTS.md (the compiled graph) is out of date or hand-edited; run bedrock build (it is generated — never hand-edited, SPINE §5)"
                 .to_string(),
         )),
         Ok(_) => {}
@@ -266,14 +236,22 @@ fn scan_situation(root: &Path, out: &mut Vec<Violation>) -> Vec<SourceFile> {
                     format!("only the six Situation namespaces are allowed (definition|architecture|risk|plan|record|references), got directory `{name}`"),
                 ));
             }
-        } else if is_hidden || name == "graph.trig" {
-            // generated graph.trig or dot files (e.g. .gitkeep) are legal
+        } else if name == "graph.trig" {
+            out.push(Violation::new(
+                "C1",
+                "situation/graph.trig",
+                1,
+                "legacy generated artifact (0.4.0 compiles the graph into the root AGENTS.md — one artifact); `bedrock build` deletes it"
+                    .to_string(),
+            ));
+        } else if is_hidden {
+            // dot files (e.g. .gitkeep) are legal
         } else {
             out.push(Violation::new(
                 "C1",
                 format!("situation/{name}"),
                 1,
-                "unexpected file directly under situation/; only the six namespace directories (and the generated graph.trig) live here"
+                "unexpected file directly under situation/; only the six namespace directories live here"
                     .to_string(),
             ));
         }
@@ -322,17 +300,25 @@ fn scan_namespace(
         if name.starts_with('.') {
             continue; // .gitkeep etc.
         }
-        let compiles = name.ends_with(".yamlld") || name.ends_with(".trig");
-        if !compiles {
+        if name.ends_with(".trig") {
             out.push(Violation::new(
                 "C1",
                 &rel,
                 1,
-                format!("file `{name}` is not a vertex; namespace directories hold flat `<local-name>.yamlld` vertices (generated `.trig` projections excepted)"),
+                format!("legacy generated artifact `{name}` (0.4.0 compiles the graph into the root AGENTS.md — one artifact); `bedrock build` deletes it"),
             ));
             continue;
         }
-        if name.ends_with(".yamlld") {
+        if !name.ends_with(".yamlld") {
+            out.push(Violation::new(
+                "C1",
+                &rel,
+                1,
+                format!("file `{name}` is not a vertex; namespace directories hold flat `<local-name>.yamlld` vertices"),
+            ));
+            continue;
+        }
+        {
             let text = std::fs::read_to_string(&p).unwrap_or_default();
             sources.push(SourceFile {
                 rel: strip_situation_rel(root, &p),
@@ -485,17 +471,6 @@ fn type_iris(value: &Value) -> Vec<String> {
             .collect(),
         _ => Vec::new(),
     }
-}
-
-/// 0.2.1 provenance: prepend the machine-owned TriG header (`#` comment) to
-/// compiled graph.trig / plan .trig output.
-fn stamp_trig(bytes: &[u8]) -> Vec<u8> {
-    let h = crate::provenance::header(crate::provenance::Kind::Trig, env!("CARGO_PKG_VERSION"));
-    let mut out = Vec::with_capacity(h.len() + 1 + bytes.len());
-    out.extend_from_slice(h.as_bytes());
-    out.push(b'\n');
-    out.extend_from_slice(bytes);
-    out
 }
 
 /// C10 (digest-skew): installed seed/schemas/*.json, seed/context.yamlld, and

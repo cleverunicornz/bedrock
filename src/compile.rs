@@ -473,12 +473,12 @@ pub fn parse_back(bytes: &[u8], rel: &str) -> Result<Vec<Quad>, Violation> {
 /// from source (multiset equality; blank nodes are already excluded). None
 /// when the gate passes, else a C7 violation.
 pub fn verify_parseback(compiled: &[Quad], trig_bytes: &[u8]) -> Option<Violation> {
-    match parse_back(trig_bytes, "situation/graph.trig") {
+    match parse_back(trig_bytes, "AGENTS.md") {
         Ok(back) => {
             if sort_quads(back) != sort_quads(compiled.to_vec()) {
                 Some(Violation::new(
                     "C7",
-                    "situation/graph.trig",
+                    "AGENTS.md",
                     1,
                     "parse-back dataset differs from the compiled dataset".to_string(),
                 ))
