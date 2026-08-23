@@ -556,3 +556,104 @@ fn build_regenerates_a_hand_edited_agents_md() {
         "drift named as C1 on AGENTS.md:\n{out2}\n{err2}"
     );
 }
+
+#[test]
+fn body_never_compiles_into_the_graph() {
+    // 0.5.0 face/body law: `body` is uncompiled depth prose. Adding one
+    // changes ZERO bytes of the artifact, and neither the prose nor a
+    // `bedrock:body` predicate ever reaches the graph.
+    let s = materialize("C1/good");
+    build_and_check_ok(&s);
+    let agents = s.path().join("AGENTS.md");
+    let before = std::fs::read(&agents).unwrap();
+
+    let vertex = s.path().join("situation/definition/invariant-01.yamlld");
+    let mut text = std::fs::read_to_string(&vertex).unwrap();
+    text.push_str(
+        "body: |\n  ## Depth\n  UNCOMPILED-MARKER-9314 rides only in the source document.\n",
+    );
+    std::fs::write(&vertex, text).unwrap();
+
+    let (c, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c, 0, "build with a body must pass:\n{out}\n{err}");
+    let after = std::fs::read(&agents).unwrap();
+    assert_eq!(before, after, "a body-only edit changes no artifact bytes");
+    let rendered = String::from_utf8_lossy(&after);
+    assert!(
+        !rendered.contains("UNCOMPILED-MARKER-9314"),
+        "body prose must never reach the graph"
+    );
+    assert!(
+        !rendered.contains("bedrock:body"),
+        "no body predicate may reach the graph"
+    );
+    let (c2, out2, err2) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c2, 0, "check stays clean with a body:\n{out2}\n{err2}");
+}
+
+#[test]
+fn body_must_be_a_string_fails_c4() {
+    // Bad polarity: a non-string body is a schema violation (C4), loudly.
+    let s = materialize("C1/good");
+    build_and_check_ok(&s);
+    let vertex = s.path().join("situation/definition/invariant-01.yamlld");
+    let mut text = std::fs::read_to_string(&vertex).unwrap();
+    text.push_str("body:\n  - not\n  - prose\n");
+    std::fs::write(&vertex, text).unwrap();
+    let (c, out, err) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    let combined = format!("{out}\n{err}");
+    assert_eq!(c, 1, "non-string body must fail check:\n{combined}");
+    assert!(
+        combined.contains("C4") && combined.contains("body"),
+        "violation is C4 and names body:\n{combined}"
+    );
+}
+
+#[test]
+fn size_report_soft_budget_polarity() {
+    // The size report is advisory, never failing: a compiled face over the
+    // 4096-char soft budget earns a SOFT line while exit stays 0.
+    let s = materialize("C1/good");
+    build_and_check_ok(&s);
+    let (c, out, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c, 0);
+    assert!(
+        out.contains("bedrock report: AGENTS.md"),
+        "check prints the size report: {out}"
+    );
+    assert!(
+        out.contains("0 compiled face(s) over the 4096-char soft budget"),
+        "small faces stay under budget: {out}"
+    );
+    assert!(!out.contains("SOFT "), "no SOFT lines under budget: {out}");
+
+    // A vertex whose face exceeds the budget (statement within its own
+    // 4096-char field bound; the whole face crosses the line).
+    let big = "x".repeat(4000);
+    std::fs::write(
+        s.path().join("situation/definition/big-face.yamlld"),
+        format!(
+            "\"@context\": \"https://yeetz.dev/bedrock/context/v1\"\n\"@id\": \"https://yeetz.dev/bedrock/vertex/big-face\"\n\"@type\": \"https://yeetz.dev/bedrock/ontology/Term\"\nlabel: \"Big face\"\nstatement: \"{big}\"\n"
+        ),
+    )
+    .unwrap();
+    let (c2, out2, err2) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(
+        c2, 0,
+        "an over-budget face NEVER fails build:\n{out2}\n{err2}"
+    );
+    assert!(
+        out2.contains("1 compiled face(s) over the 4096-char soft budget"),
+        "report counts the oversized face: {out2}"
+    );
+    assert!(
+        out2.contains("SOFT situation/definition/big-face.yamlld:1"),
+        "SOFT line names the file: {out2}"
+    );
+    let (c3, out3, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c3, 0, "an over-budget face NEVER fails check:\n{out3}");
+    assert!(
+        out3.contains("SOFT situation/definition/big-face.yamlld:1"),
+        "check repeats the SOFT line: {out3}"
+    );
+}

@@ -266,7 +266,21 @@ pub fn expand(
     src: &str,
     registry: &ContextRegistry,
 ) -> Result<Vec<Quad>, Vec<Violation>> {
-    let json = serde_json::to_string(value).expect("Value serializes");
+    // 0.5.0 face/body law: `body` is the vertex's own depth document — free
+    // prose an agent ingests by pulling the vertex's `document` edge to the
+    // source file. It NEVER compiles into the graph. The bedrock context
+    // maps no `body` term and serves no `@vocab`, so JSON-LD expansion would
+    // drop it anyway; this strip makes the boundary deliberate instead of an
+    // accident of context mapping.
+    let value = match value.as_object() {
+        Some(obj) if obj.contains_key("body") => {
+            let mut stripped = obj.clone();
+            stripped.remove("body");
+            std::borrow::Cow::Owned(Value::Object(stripped))
+        }
+        _ => std::borrow::Cow::Borrowed(value),
+    };
+    let json = serde_json::to_string(value.as_ref()).expect("Value serializes");
     let registry = registry.clone(); // closure must be 'static
     let parser = JsonLdParser::new()
         .with_base_iri(crate::contextreg::BASE_IRI)

@@ -50,6 +50,7 @@ fn regenerate_and_verify(target: &Path, verb: &str) -> Result<Compiled, Fatal> {
             "bedrock {verb} aborted: regenerated state does not pass the full check (non-deterministic output?)"
         )));
     }
+    print_report(&c);
     Ok(c)
 }
 
@@ -690,5 +691,33 @@ fn print_instructions(mode: &str) {
 pub fn print_violations(v: &[Violation]) {
     for x in v {
         eprintln!("{x}");
+    }
+}
+
+/// The 0.5.0 size report (advisory, never failing): what every agent
+/// context pays for the compiled graph, plus each compiled face over the
+/// soft budget. SOFT lines are guidance, never violations — the target
+/// band is 500–1000 tokens (~2000–4096 chars); depth belongs in `body:`,
+/// which never compiles.
+pub fn print_report(c: &Compiled) {
+    let over: Vec<&check::Face> = c
+        .faces
+        .iter()
+        .filter(|f| f.chars > check::SOFT_FACE_BUDGET_CHARS)
+        .collect();
+    println!(
+        "bedrock report: AGENTS.md {} bytes ({} source files); {} compiled face(s) over the {}-char soft budget",
+        c.agents_md.len(),
+        c.faces.len(),
+        over.len(),
+        check::SOFT_FACE_BUDGET_CHARS
+    );
+    for f in over {
+        println!(
+            "SOFT {}:1 compiled face ~{} chars exceeds the soft budget ({} chars ≈ 1k tokens) — advisory, never failing: keep the face lean (target 500–1000 tokens); depth belongs in `body:`, which never compiles",
+            f.rel,
+            f.chars,
+            check::SOFT_FACE_BUDGET_CHARS
+        );
     }
 }

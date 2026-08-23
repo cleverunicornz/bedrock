@@ -47,11 +47,14 @@ epochs, deployments, verdicts, decisions; `references/` depth docs.
 
 ## 6. Add a vertex and build
 
-1. Write `situation/<ns>/<local-name>.yamlld` — `@id`, `@type`, `label` or
-   a one-line description, and typed edges; copy an existing vertex.
-2. Run `bedrock build`: re-checks and compiles YAML-LD into the root
-   `AGENTS.md` — the complete deterministic TriG graph. Failure prints `RULE
-   path:line message`; fix the cause — build refuses while red.
+1. Write `situation/<ns>/<local-name>.yamlld` — the face on top (`@id`,
+   `@type`, `label` or a one-line description, typed edges), depth in
+   `body: |` below; the face compiles, the body never does.
+2. Run `bedrock build`: re-checks, compiles YAML-LD into the root
+   `AGENTS.md` — the complete deterministic TriG graph — and prints the
+   size report (SOFT lines flag faces over 4096 chars; advisory only).
+   Failure prints `RULE path:line message`; fix the cause — build
+   refuses while red.
 
 ## 7. Commit and PR
 

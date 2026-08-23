@@ -32,7 +32,24 @@ pub struct Compiled {
     /// complete TriG body (0.4.0 base protocol — the file the harness
     /// injects is the graph itself).
     pub agents_md: String,
+    /// Per-source-file compiled-face sizes (0.5.0 soft budget) — advisory
+    /// input to the size report, never a violation.
+    pub faces: Vec<Face>,
 }
+
+/// One source file's compiled face: the chars that compile into the graph,
+/// measured as the vertex re-serialized to canonical YAML with `body`
+/// removed. Comments and `body` never compile and are free; the face is
+/// what every agent context pays for.
+pub struct Face {
+    pub rel: String,
+    pub chars: usize,
+}
+
+/// The soft face budget (0.5.0): 4096 chars ≈ 1k tokens. Advisory, never
+/// failing — the target band is 500–1000 tokens; a face over this budget
+/// gets a SOFT line in the size report pointing depth at `body`.
+pub const SOFT_FACE_BUDGET_CHARS: usize = 4096;
 
 /// The set of source yamlld files under situation/ with their namespace.
 struct SourceFile {
@@ -68,6 +85,7 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
 
     // ---------- per-file C2/C3/C4 ----------
     let mut all_quads: Vec<Quad> = Vec::new();
+    let mut faces: Vec<Face> = Vec::new();
 
     for f in &sources {
         // C2
@@ -76,6 +94,12 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
         let Some(value) = &parsed.value else {
             continue;
         };
+
+        // 0.5.0 size report input: the compiled face of this source file.
+        faces.push(Face {
+            rel: rel(&f.rel),
+            chars: face_chars(value),
+        });
 
         // C3 profile
         out.extend(compile::ld_profile(value, &rel(&f.rel), &f.text, &registry));
@@ -150,6 +174,7 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
     let compiled = Compiled {
         quads: sorted,
         agents_md: agents,
+        faces,
     };
     Ok((out, Some(compiled)))
 }
@@ -357,6 +382,20 @@ fn strip_situation_rel(root: &Path, p: &Path) -> PathBuf {
 
 fn rel(p: impl AsRef<Path>) -> String {
     p.as_ref().to_string_lossy().into_owned()
+}
+
+/// The compiled-face measure (0.5.0 soft budget): canonical YAML rendering
+/// of the vertex with `body` removed, in chars.
+fn face_chars(value: &Value) -> usize {
+    let rendered = match value.as_object() {
+        Some(obj) if obj.contains_key("body") => {
+            let mut o = obj.clone();
+            o.remove("body");
+            serde_norway::to_string(&Value::Object(o))
+        }
+        _ => serde_norway::to_string(value),
+    };
+    rendered.map(|s| s.chars().count()).unwrap_or_default()
 }
 
 /// C1: any AGENTS.md not at the repo root → FAIL; root AGENTS.md must not

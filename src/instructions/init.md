@@ -46,11 +46,13 @@ it by hand; delete any other copy. This law is non-negotiable.
 
 ## 5. Add a vertex
 
-1. Write `situation/<ns>/<local-name>.yamlld`: `@id`, `@type`, `label` or a
-   one-line description, and typed edges. Copy an existing vertex's shape;
-   add a `statement` to invariants.
-2. Run `bedrock build`. It re-checks and compiles YAML-LD into the root
-   `AGENTS.md` — the complete deterministic TriG graph.
+1. Write `situation/<ns>/<local-name>.yamlld`: the face on top — `@id`,
+   `@type`, `label` or a one-line description, typed edges, a `statement`
+   that says when to read on — and depth in `body: |` below. The face
+   compiles into the graph (keep it 500–1000 tokens); the body never does.
+2. Run `bedrock build`. It re-checks, compiles YAML-LD into the root
+   `AGENTS.md` — the complete deterministic TriG graph — and prints the
+   size report (SOFT lines flag faces over 4096 chars; advisory only).
 3. If check fails: one violation per line, `RULE path:line message`. Fix the
    cause — `build` refuses to proceed while check is red.
 
