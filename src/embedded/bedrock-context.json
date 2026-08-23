@@ -89,6 +89,9 @@
       "@id": "https://yeetz.dev/bedrock/disposition",
       "@type": "@json"
     },
+    "state": {
+      "@id": "https://yeetz.dev/bedrock/state"
+    },
     "subject": {
       "@id": "https://yeetz.dev/bedrock/subject",
       "@type": "@id"

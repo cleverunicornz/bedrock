@@ -1,16 +1,17 @@
-# A vertex for the situation structure itself (SPINE §3): the six namespaces,
-# their meaning, and one path edge each so the "Where things live" register
-# item renders the layout. These six directories exist in every repo seeded by
-# `bedrock init`; `references/` is the only one allowed to nest or hold
-# non-YAML-LD files.
+# The canonical situation store: six namespaces, their residency semantics,
+# and path edges that let an agent discover cold source without enumerating
+# it in the injected graph.
 "@context": "https://yeetz.dev/bedrock/context/v1"
 "@id": "https://yeetz.dev/bedrock/vertex/situation-structure"
 "@type": "https://yeetz.dev/bedrock/ontology/SituationStructure"
 label: "The situation structure"
 statement: >
-  situation/ is the repo's law and memory: six flat namespace directories
-  (definition, architecture, risk, plan, record, references) holding YAML-LD
-  vertices that bedrock check validates and build compiles into the register.
+  situation/ is the repo's canonical law, current knowledge, and episodic
+  history: six namespaces whose complete YAML-LD source bedrock validates.
+  AGENTS.md is its resident projection — definition, architecture, current
+  risks, Decisions, and compact routing faces for active Plans. Draft,
+  completed, and abandoned Plans plus episodic records stay cold under these
+  disclosed paths until a task requires them.
 path:
   - "https://yeetz.dev/bedrock/path/situation/definition"
   - "https://yeetz.dev/bedrock/path/situation/architecture"

@@ -353,7 +353,7 @@ fn update_refreshes_skewed_installed_base_files() {
     assert_eq!(c3, 0, "update must succeed:\n{combined}");
     assert!(
         out3.contains(
-            "bedrock update: check + build pass (AGENTS.md — the compiled graph — regenerated)"
+            "bedrock update: check + build pass (AGENTS.md — the resident projection — regenerated)"
         ),
         "update stdout names the regenerated artifact: {out3}"
     );

@@ -113,12 +113,14 @@ and its 2–5 repo-specific process skills below. Final prose.
     public-IP access is break-glass only.
 15. **Decisions are append-only:** ADRs are immutable — supersede, never
     edit.
-16. **AGENTS.md is the compiled graph:** one artifact — the complete TriG
-    compiled from `situation/`, injected into every agent context by the
-    harness. Never hand-edited; always regenerated. Each node carries its
-    description, its relationships, and a pointer to its own source
-    document; humans read prose in `situation/`. After work that changes
-    reality, re-situate it — emit knowledge, never rules.
+16. **AGENTS.md is the resident situation graph:** one generated TriG
+    working-set projection, injected into every agent context by the
+    harness. `situation/` is the complete canonical store and every source
+    validates; definition, architecture, current risks, Decisions, and
+    compact routing faces for active Plans are resident. Draft, done, and
+    abandoned Plans, episodic records, references, and every body stay cold
+    behind disclosed paths. Never hand-edit AGENTS.md; always regenerate it.
+    After work changes reality, re-situate it — emit knowledge, never rules.
 
 **Breadcrumbs (gate + pointer, depth elsewhere):**
 - *Adversarial review:* human-invoked (expansive review, hard debug, hard

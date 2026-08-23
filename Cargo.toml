@@ -1,9 +1,9 @@
 [package]
 name = "yeetz-bedrock"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.85"
-description = "bedrock — compile an org's situation/ vertices into ONE artifact: the root AGENTS.md, the complete TriG graph injected into every agent"
+description = "bedrock — compile an org's YAML-LD situation into ONE injected resident graph: root AGENTS.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/cleverunicornz/bedrock"
 readme = "README.md"

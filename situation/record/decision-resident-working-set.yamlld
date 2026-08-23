@@ -1,0 +1,64 @@
+# Decision record: resident projection contract, 0.6.0.
+# The statement is the resident collapse; body carries implementation rationale.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-resident-working-set"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+label: "AGENTS.md is a resident working set, not the situation archive"
+references:
+  - "https://yeetz.dev/bedrock/vertex/invariant-16-agents-md-register"
+  - "https://yeetz.dev/bedrock/vertex/invariant-01-possibility-space"
+  - "https://yeetz.dev/bedrock/vertex/decision-vertex-face-body"
+statement: >
+  Chose the 0.6.0 resident-projection contract: situation/ is the complete
+  canonical store and every YAML-LD source validates, while AGENTS.md carries
+  only current operational knowledge. Definition, architecture, current
+  risks, and every Decision are resident; only active Plans project a compact
+  routing face; draft/done/abandoned Plans, episodic records, references,
+  bodies, and active-plan execution payload stay cold behind disclosed paths.
+  Resident vertex edges must close over resident vertices or repo paths.
+  Rejected: injecting every historical Plan/record — unbounded context noise;
+  deleting history to save context — loses the canonical store; per-agent or
+  branch-dynamic artifacts — breaks determinism, C1 byte review, and shared
+  situatedness; completed-plan tombstones — still scale with history. Revisit
+  if active routing faces themselves dominate context, or a cold source class
+  becomes current truth often enough to deserve explicit residency.
+timestamp: "2026-08-23T18:00:00"
+body: |
+  ## Two truths with different jobs
+
+  situation/ is storage truth: complete source, history, evidence, and depth.
+  AGENTS.md is delivery truth: the bounded graph every agent receives before
+  it knows the task. Conflating them made every past execution tax every
+  future task. The compiler now validates the former and projects the latter.
+
+  ## Plans are episodic working memory
+
+  A Plan declares disposition.state from birth. Draft stays source-only.
+  Active contributes only its routing face: type, label, intent, graph edges,
+  synthesized state, and document pointer. The executing agent follows that
+  pointer for acceptance criteria, tasks, witnesses, reflection depth,
+  residual, statement, and body. Done or abandoned returns entirely to cold
+  source. Reflection promotes only durable consequences into definition,
+  architecture, current risk, or a Decision.
+
+  ## History remains discoverable
+
+  The resident SituationStructure vertex points at all six namespaces. An
+  agent asked to investigate history knows plan/ and record/ exist and can
+  search them without receiving an enumeration on unrelated tasks. Cold is a
+  delivery decision, never deletion or weaker validation.
+
+  ## Projection integrity
+
+  Full-source C5 resolution runs before projection. C11 then rejects a
+  resident vertex IRI edge whose target is cold: an injected edge without an
+  injected node is a lie. Historical evidence crosses the boundary through a
+  repo-path pointer; durable knowledge crosses by promotion into a resident
+  vertex. The compiler never silently rewrites relationship semantics.
+
+  ## Determinism
+
+  Residency derives only from checked-in source type and Plan state. It never
+  depends on the current branch, GitHub, the invoking agent, or runtime task.
+  The same commit produces the same bytes, C1 remains reviewable in the PR,
+  and every agent begins from the same situated working set.

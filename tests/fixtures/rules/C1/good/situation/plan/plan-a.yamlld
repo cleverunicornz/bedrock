@@ -9,3 +9,5 @@ consumes:
   - "https://yeetz.dev/bedrock/vertex/invariant-01"
 tasks:
   - "Run bedrock build."
+disposition:
+  state: active

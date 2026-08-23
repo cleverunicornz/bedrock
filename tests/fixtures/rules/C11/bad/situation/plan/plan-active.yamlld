@@ -1,0 +1,14 @@
+# C11 bad: source edge resolves, but resident Plan points by IRI at a cold draft Plan.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-active"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Resident edge to cold target"
+intent: "Demonstrate why the resident graph must close over vertex edges."
+acceptanceCriteria:
+  - "C11 rejects the resident-to-cold edge."
+consumes:
+  - "https://yeetz.dev/bedrock/vertex/plan-draft"
+tasks:
+  - "Run bedrock check."
+disposition:
+  state: active

@@ -1,0 +1,16 @@
+# C11 good: resident Plan reaches cold history through a repo path, never a cold vertex IRI.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-active"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Active routing face"
+intent: "Exercise the active plan while treating draft history as a document."
+acceptanceCriteria:
+  - "The active routing face projects without a dangling resident edge."
+consumes:
+  - "https://yeetz.dev/bedrock/path/situation/plan/plan-draft.yamlld"
+tasks:
+  - "Read the draft document only if execution needs its history."
+disposition:
+  state: active
+body: |
+  This active body stays cold.

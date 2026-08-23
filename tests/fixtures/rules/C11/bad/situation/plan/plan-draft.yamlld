@@ -1,0 +1,13 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-draft"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Cold draft target"
+intent: "Stay cold while another Plan incorrectly points at this vertex IRI."
+acceptanceCriteria:
+  - "The source vertex remains valid."
+consumes:
+  - "https://yeetz.dev/bedrock/path/situation/plan"
+tasks:
+  - "Remain draft."
+disposition:
+  state: draft

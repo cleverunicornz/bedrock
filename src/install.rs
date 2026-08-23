@@ -12,17 +12,14 @@ use std::process::Command;
 /// must never run for `check`/`build`, only `init`/`adopt`.
 pub const VERSION_GATE_ENABLED: bool = false;
 
-/// `bedrock build` — compile the single artifact: the root AGENTS.md (the
-/// complete TriG graph, 0.4.0 base protocol).
+/// `bedrock build` — validate the complete situation and compile the single
+/// artifact: root AGENTS.md, its resident TriG working-set projection.
 ///
-/// Validates the *source* (check::collect: C1 placement, C2–C5, C7) and
-/// aborts on any source violation; then regenerates its own output — a
-/// stale AGENTS.md is exactly what build fixes, so the drift check (C1)
-/// is only enforced by `check`, the CI gate, and verified against the
-/// fresh state after writing.
+/// `collect` validates source and projection but ignores stale generated
+/// output; build rewrites AGENTS.md, then the full check enforces byte drift.
 pub fn build(root: &Path) -> Result<(), Fatal> {
     regenerate_and_verify(root, "build")?;
-    println!("bedrock build: AGENTS.md (the compiled graph) up to date");
+    println!("bedrock build: AGENTS.md (the resident projection) up to date");
     Ok(())
 }
 
@@ -41,7 +38,7 @@ fn regenerate_and_verify(target: &Path, verb: &str) -> Result<Compiled, Fatal> {
             "bedrock {verb} aborted: source check failed"
         )));
     }
-    let c = compiled.expect("collect always yields a compiled graph");
+    let c = compiled.expect("collect always yields a resident projection");
     write_artifacts(target, &c)?;
     let (post, _) = check::run(target)?;
     if !post.is_empty() {
@@ -552,7 +549,9 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
 
     // Then check + build against the refreshed state.
     regenerate_and_verify(target, "update")?;
-    println!("bedrock update: check + build pass (AGENTS.md — the compiled graph — regenerated)");
+    println!(
+        "bedrock update: check + build pass (AGENTS.md — the resident projection — regenerated)"
+    );
     Ok(())
 }
 
@@ -694,11 +693,9 @@ pub fn print_violations(v: &[Violation]) {
     }
 }
 
-/// The 0.5.0 size report (advisory, never failing): what every agent
-/// context pays for the compiled graph, plus each compiled face over the
-/// soft budget. SOFT lines are guidance, never violations — the target
-/// band is 500–1000 tokens (~2000–4096 chars); depth belongs in `body:`,
-/// which never compiles.
+/// The resident-projection report (advisory, never failing): exact artifact
+/// bytes, source/resident counts, plan lifecycle counts, episodic records,
+/// and any resident face over the soft budget.
 pub fn print_report(c: &Compiled) {
     let over: Vec<&check::Face> = c
         .faces
@@ -706,15 +703,28 @@ pub fn print_report(c: &Compiled) {
         .filter(|f| f.chars > check::SOFT_FACE_BUDGET_CHARS)
         .collect();
     println!(
-        "bedrock report: AGENTS.md {} bytes ({} source files); {} compiled face(s) over the {}-char soft budget",
+        "bedrock report: AGENTS.md {} bytes ({} sources; {} resident faces); {} face(s) over the {}-char soft budget",
         c.agents_md.len(),
+        c.source_files,
         c.faces.len(),
         over.len(),
         check::SOFT_FACE_BUDGET_CHARS
     );
+    println!(
+        "bedrock projection: plans {} active resident; {} draft / {} done / {} abandoned / {} unknown cold",
+        c.projection.active_plans,
+        c.projection.draft_plans,
+        c.projection.done_plans,
+        c.projection.abandoned_plans,
+        c.projection.unknown_plans,
+    );
+    println!(
+        "bedrock projection: records {} decisions resident / {} episodic cold; references {} YAML-LD cold",
+        c.projection.resident_decisions, c.projection.cold_records, c.projection.cold_references,
+    );
     for f in over {
         println!(
-            "SOFT {}:1 compiled face ~{} chars exceeds the soft budget ({} chars ≈ 1k tokens) — advisory, never failing: keep the face lean (target 500–1000 tokens); depth belongs in `body:`, which never compiles",
+            "SOFT {}:1 resident face ~{} chars exceeds the soft budget ({} chars ≈ 1k tokens) — advisory, never failing: keep the face lean (target 500–1000 tokens); depth belongs in `body:`, which never compiles",
             f.rel,
             f.chars,
             check::SOFT_FACE_BUDGET_CHARS
