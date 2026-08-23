@@ -5,6 +5,10 @@
 # description and its relationships; follow `references`/`path` pointers into
 # situation/ to read the full document. Humans wanting prose read situation/.
 #
+# NEVER hand-edit this file: it is built by `bedrock build`, and hand edits
+# are detected and rejected by `bedrock check`. To change the graph, edit
+# the situation/ vertices, then run `bedrock build` and commit the result.
+#
 # repo — bedrock is a single Rust binary (crate yeetz-bedrock) that seeds a repo with a YAML-LD situation, checks the situation, and compiles it into ONE artifact: the root AGENTS.md — the complete TriG graph, injected into every agent.
 #
 # Operating this repository:

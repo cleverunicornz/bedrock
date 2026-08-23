@@ -84,6 +84,10 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
     out.push_str("# description and its relationships; follow `references`/`path` pointers into\n");
     out.push_str("# situation/ to read the full document. Humans wanting prose read situation/.\n");
     out.push_str("#\n");
+    out.push_str("# NEVER hand-edit this file: it is built by `bedrock build`, and hand edits\n");
+    out.push_str("# are detected and rejected by `bedrock check`. To change the graph, edit\n");
+    out.push_str("# the situation/ vertices, then run `bedrock build` and commit the result.\n");
+    out.push_str("#\n");
     // Title: repo name + identity statement.
     match &identity {
         Some((_, stmt)) if !stmt.trim().is_empty() => {
