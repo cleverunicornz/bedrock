@@ -205,6 +205,19 @@ fn decision_missing_required_fields_fails_c4() {
 }
 
 #[test]
+fn decision_with_disposition_fails_c4() {
+    // Bad (0.3.0 eval round 2): a Decision carrying `disposition` — the
+    // record schema's Decision arm rejects disposition/witnesses outright
+    // (a decision is not CI-judged); the prose now matches enforcement.
+    let bad = materialize("C4/decision-with-disposition");
+    let combined = check_fails_with(&bad, "C4");
+    assert!(
+        combined.contains("decision-with-disposition.yamlld"),
+        "offending vertex named: {combined}"
+    );
+}
+
+#[test]
 fn supersedes_dangling_target_fails_c5() {
     // Bad (0.3.0): a Decision whose `supersedes` edge points at a vertex
     // @id that exists nowhere in this repo's graph — a dangling edge like

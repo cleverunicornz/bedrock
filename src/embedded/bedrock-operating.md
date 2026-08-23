@@ -119,7 +119,8 @@ A plan carries exactly these seven fields:
 - `tasks` — the ordered work that makes the promise real.
 - `witnesses` — retained CI-run-URL observations; required before `done`.
 - `reflectDepth` — how deep the follow-up reflection must go.
-- `disposition` + `residual` — the closing state and what was not assured.
+- `disposition` + `residual` — the closing state and what was not assured;
+  both land at close, not at authoring.
 
 Deliberately excluded, permanently: no custody choreography, no per-actor
 openings or closures, no round ordinals, no confirmation passes. This is a
@@ -140,10 +141,11 @@ with zero context — at the moment of collapse, never reconstructed later.
 Most choices need no vertex; when in doubt, do not write one.
 
 Fields: `statement` carries the choice, the rejected alternatives, and the
-revisit conditions in bounded prose — no template, no status field, no
-disposition, no witnesses: a decision is not CI-judged. `timestamp` orders
-the log. `references` links the invariants and risks the decision touches —
-an invariant pointing at a decision carries its reason, not just its rule.
+revisit conditions in bounded prose — no template, no status field, and the
+schema rejects `disposition` and `witnesses`: a decision is not CI-judged.
+`timestamp` orders the log. `references` links the invariants and risks the
+decision touches — an invariant pointing at a decision carries its reason,
+not just its rule.
 
 Reading: a decision with no incoming `supersedes` edge is live. Before
 proposing to change a settled choice, walk the chain first — the

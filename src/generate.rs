@@ -175,6 +175,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
     //    by init/adopt/update into situation/references/bedrock-operating.md
     //    (C10 guards it against drift).
     out.push_str("## Operating this repository\n\n");
+    out.push_str("- Work happens on verb-prefixed branches, one verb per state (these are branch names, not directories):\n");
     out.push_str("- think/ — explore and decide.\n");
     out.push_str("- plan/ — write the plan as a graph.\n");
     out.push_str("- execute/ — do the work.\n");

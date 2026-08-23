@@ -72,8 +72,11 @@
         { "properties": { "@type": { "const": "https://yeetz.dev/bedrock/ontology/Decision" } } },
         { "properties": { "@type": { "type": "array", "contains": { "const": "https://yeetz.dev/bedrock/ontology/Decision" } } } }
       ], "required": ["@type"] },
-      "then": { "required": ["statement", "timestamp"] },
-      "$comment": "Decision: the named collapse — statement carries the choice, the rejected alternatives, and the revisit conditions; timestamp orders the log. No disposition, no witnesses: a decision is not CI-judged."
+      "then": {
+        "required": ["statement", "timestamp"],
+        "not": { "anyOf": [ { "required": ["disposition"] }, { "required": ["witnesses"] } ] }
+      },
+      "$comment": "Decision: the named collapse — statement carries the choice, the rejected alternatives, and the revisit conditions; timestamp orders the log. disposition and witnesses are rejected here: a decision is not CI-judged."
     }
   ],
   "anyOf": [{ "required": ["label"] }, { "required": ["statement"] }],

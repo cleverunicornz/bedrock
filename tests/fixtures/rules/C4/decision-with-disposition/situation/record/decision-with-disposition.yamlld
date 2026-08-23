@@ -1,0 +1,9 @@
+# C4 bad: a Decision carrying `disposition` — the record schema's Decision arm
+# rejects disposition and witnesses (a decision is not CI-judged).
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-with-disposition"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+statement: "Carries a disposition, which the Decision arm forbids."
+timestamp: "2026-08-22T10:00:00"
+disposition:
+  state: "active"

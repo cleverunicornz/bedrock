@@ -47,6 +47,7 @@
 
 ## Operating this repository
 
+- Work happens on verb-prefixed branches, one verb per state (these are branch names, not directories):
 - think/ — explore and decide.
 - plan/ — write the plan as a graph.
 - execute/ — do the work.
