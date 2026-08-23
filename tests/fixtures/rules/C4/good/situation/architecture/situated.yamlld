@@ -1,0 +1,12 @@
+# Pass pole (defect 2): a situated vertex under the CONSUMER's own IRI base
+# (https://yeetz.dev/<repo>/vertex/<slug>) must validate. Bedrock base is the
+# floor-only base; a repo base is the situated base. Edge target at the
+# bedrock base (a floor vertex in the same graph) must still resolve (C5).
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/myrepo/vertex/situated-identity"
+"@type": "https://yeetz.dev/bedrock/ontology/Identity"
+label: "Situated repo identity"
+role: "owner"
+statement: "A consumer repo authors its own identity vertex under its own IRI base."
+references:
+  - "https://yeetz.dev/bedrock/vertex/typd"

@@ -1,4 +1,4 @@
-# Installed by bedrock v0.2.1 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
+# Installed by bedrock v0.2.2 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
 # Bedrock repo-local @context — the single serviceable context for every
 # situation/<ns>/ vertex (SPINE §4 C3: one @context, no remote loading).
 # W1 embeds this exact map and serves it for the IRI
@@ -7,8 +7,9 @@
 #
 # Vocabulary rule: a term is typed "@id" when its value is a pointer
 # (edge target or resource locator), so it expands to an absolute IRI.
-# Pointer value convention: vertex locals live under
-#   https://yeetz.dev/bedrock/vertex/<local-name>
+# Pointer value convention: vertex locals live under either base —
+#   https://yeetz.dev/bedrock/vertex/<local-name>      (floor content)
+#   https://yeetz.dev/<repo>/vertex/<local-name>       (situated content)
 # repo-relative paths are encoded under
 #   https://yeetz.dev/bedrock/path/<repo-path>   (strip the prefix -> path)
 # so that every pointer is absolute up front and the compiler can map

@@ -43,6 +43,25 @@ check` violation (rule C8) — no witness, no done.
 
 Base @types are the bedrock vocabulary; consumers never add to it.
 
+### Vertex identity bases
+
+Every vertex `@id` sits under exactly one of two bases, both accepted by
+the namespace schemas (`seed/schemas/*.json`):
+
+- **bedrock base** — `https://yeetz.dev/bedrock/vertex/<local-name>`: floor
+  content only. Floor is bedrock-namespaced by law; a `layer: floor` vertex
+  must use this base (enforced by the schemas).
+- **repo base** — `https://yeetz.dev/<repo>/vertex/<local-name>`: situated
+  content. A consumer repo authors its own identity/architecture/risk/plan/
+  record vertices under its own IRI segment.
+
+The local-name slug pattern is identical under both bases
+(`[a-z0-9][a-z0-9-]*`). Edge targets accept either base; path pointers stay
+bedrock-namespaced — `https://yeetz.dev/bedrock/path/<repo-path>` is the
+only path base. Adopted repos' pre-0.2.2 identity vertices may be renamed
+under their own repo base in a later sweep; seeded floor vertices never
+move.
+
 ## Edge vocabulary
 
 The set is closed. It grows only when a new relationship cannot be
@@ -70,6 +89,11 @@ separate extension schema files:
 Extension schemas live outside `seed/schemas/` (the base schemas are
 bedrock-owned). Extensions never redefine or shadow a base term: if a base
 term already says it, reference it; do not re-state it under a new name.
+
+The vertex @id follows the same split as @type: floor vertices live under
+the bedrock base (floor is bedrock-namespaced by law); situated vertices
+live under the repo base `https://yeetz.dev/<repo>/vertex/<local-name>`
+(see "Vertex identity bases").
 
 ## A worked vertex
 

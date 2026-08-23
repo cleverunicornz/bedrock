@@ -29,14 +29,48 @@ pub fn donor_execution_record() -> PathBuf {
     manifest().join("spec/donor-execution-record.yamlld")
 }
 
-/// Run the bedrock binary with `env`-inherited plus BEDROCK_SEED.
+/// Write a crates.io-style version-gate fixture JSON whose `max_version` is
+/// `version`; returns the fixture path. The version gate (SPINE §1) reads
+/// `BEDROCK_VERSION_JSON` as the lookup fixture, so tests never touch the
+/// network.
+pub fn version_fixture(version: &str) -> PathBuf {
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let safe = version.replace(['.', '-'], "_");
+    let p = std::env::temp_dir().join(format!(
+        "bedrock-version-fixture-{}-{seq}-{safe}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &p,
+        format!(
+            "{{\"crate\":{{\"max_version\":\"{version}\",\"num_versions\":1,\"versions\":[1]}}}}"
+        ),
+    )
+    .unwrap();
+    p
+}
+
+/// A version fixture equal to the running binary's version: the default for
+/// every init/adopt test so the gate says "current" and proceeds.
+pub fn current_version_fixture() -> PathBuf {
+    version_fixture(env!("CARGO_PKG_VERSION"))
+}
+
+/// Point `cmd` at the current-version gate fixture (network-free default).
+pub fn use_current_gate(cmd: &mut Command) {
+    cmd.env("BEDROCK_VERSION_JSON", current_version_fixture());
+}
+
+/// Run the bedrock binary with `env`-inherited plus BEDROCK_SEED and the
+/// current-version gate fixture.
 pub fn run(args: &[&str], cwd: &Path) -> (i32, String, String) {
-    let out = Command::new(bedrock_exe())
-        .args(args)
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(args)
         .current_dir(cwd)
-        .env("BEDROCK_SEED", fixture_seed())
-        .output()
-        .expect("spawn bedrock");
+        .env("BEDROCK_SEED", fixture_seed());
+    use_current_gate(&mut cmd);
+    let out = cmd.output().expect("spawn bedrock");
     (
         out.status.code().unwrap_or(-1),
         String::from_utf8_lossy(&out.stdout).into_owned(),
@@ -46,11 +80,35 @@ pub fn run(args: &[&str], cwd: &Path) -> (i32, String, String) {
 
 /// Run without forcing BEDROCK_SEED (tests the `<root>/seed` default path).
 pub fn run_no_seed(args: &[&str], cwd: &Path) -> (i32, String, String) {
-    let out = Command::new(bedrock_exe())
-        .args(args)
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(args).current_dir(cwd);
+    use_current_gate(&mut cmd);
+    let out = cmd.output().expect("spawn bedrock");
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+/// Run one init/adopt command against a specific version-gate fixture
+/// (`Some(path)` → `BEDROCK_VERSION_JSON` set; `None` → env unset, the real
+/// network path — use only when the fixture itself must fail, e.g. a
+/// nonexistent path). BEDROCK_SEED is always set.
+pub fn run_gate(args: &[&str], cwd: &Path, fixture: Option<&str>) -> (i32, String, String) {
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(args)
         .current_dir(cwd)
-        .output()
-        .expect("spawn bedrock");
+        .env("BEDROCK_SEED", fixture_seed());
+    match fixture {
+        Some(f) => {
+            cmd.env("BEDROCK_VERSION_JSON", f);
+        }
+        None => {
+            cmd.env_remove("BEDROCK_VERSION_JSON");
+        }
+    }
+    let out = cmd.output().expect("spawn bedrock");
     (
         out.status.code().unwrap_or(-1),
         String::from_utf8_lossy(&out.stdout).into_owned(),

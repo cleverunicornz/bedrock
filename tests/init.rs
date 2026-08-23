@@ -4,7 +4,10 @@
 use std::process::Command;
 
 mod common;
-use common::{Scratch, bedrock_exe, fixture_seed, manifest, run, run_no_seed};
+use common::{
+    Scratch, bedrock_exe, fixture_seed, manifest, run, run_gate, run_no_seed, use_current_gate,
+    version_fixture,
+};
 
 #[test]
 fn init_seeds_new_repo_and_passes_check() {
@@ -158,12 +161,12 @@ fn init_missing_seed_is_loud() {
     // failure — the SPINE §1 order never silently falls through to `./seed`
     // in cwd or the embedded copy once the env var is defined.
     let s = Scratch::new("init-noseed");
-    let out = Command::new(bedrock_exe())
-        .args(["init", s.path().to_str().unwrap()])
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(["init", s.path().to_str().unwrap()])
         .current_dir(s.path())
-        .env("BEDROCK_SEED", s.path().join("does-not-exist"))
-        .output()
-        .unwrap();
+        .env("BEDROCK_SEED", s.path().join("does-not-exist"));
+    use_current_gate(&mut cmd);
+    let out = cmd.output().unwrap();
     let text = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
@@ -182,12 +185,12 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
     // the compile-time-embedded seed/ (the 0.1.1 standalone-binary fix:
     // cargo-installed bedrock has no repository checkout to read seed/ from).
     let s = Scratch::new("embedded-seed");
-    let out = Command::new(bedrock_exe())
-        .args(["init", s.path().to_str().unwrap()])
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(["init", s.path().to_str().unwrap()])
         .current_dir(s.path())
-        .env_remove("BEDROCK_SEED")
-        .output()
-        .unwrap();
+        .env_remove("BEDROCK_SEED");
+    use_current_gate(&mut cmd);
+    let out = cmd.output().unwrap();
     let text = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
@@ -349,10 +352,18 @@ fn update_refreshes_skewed_installed_base_files() {
     let embedded_plan = std::fs::read(manifest().join("seed/schemas/plan.json")).unwrap();
     let installed_plan = std::fs::read(s.path().join("seed/schemas/plan.json")).unwrap();
     assert_eq!(embedded_plan, installed_plan, "schema restored");
+    // The operating reference is stored as a raw template (its stamp is
+    // rendered per version), so the installed file must equal the CANONICAL
+    // stamped form — the exact bytes `bedrock check` C10 compares against.
     let embedded_op = std::fs::read(manifest().join("src/embedded/bedrock-operating.md")).unwrap();
+    let canonical_op = bedrock::provenance::render(
+        bedrock::provenance::Kind::Hash,
+        env!("CARGO_PKG_VERSION"),
+        &embedded_op,
+    );
     let installed_op =
         std::fs::read(s.path().join("situation/references/bedrock-operating.md")).unwrap();
-    assert_eq!(embedded_op, installed_op, "operating reference restored");
+    assert_eq!(canonical_op, installed_op, "operating reference restored");
 
     // check passes again.
     let (c4, out4, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
@@ -384,16 +395,17 @@ fn offline_flag_stamps_epoch_record() {
 }
 
 #[test]
-fn version_gate_notice_printed() {
-    // Before first publication the gate is a no-op WITH a notice at
-    // init/adopt, and never runs for check/build.
-    let s = Scratch::new("gate");
-    let (c, out, _) = run(&["init", s.path().to_str().unwrap()], &manifest());
-    assert_eq!(c, 0);
+fn version_gate_current_proceeds() {
+    // Local version == registry latest → init proceeds silently, no refusal.
+    let s = Scratch::new("gate-current");
+    let (c, out, err) = run(&["init", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(c, 0, "current version must proceed:\n{out}\n{err}");
     assert!(
-        out.contains("version gate inactive until the crate's first publication"),
-        "init must print the gate notice: {out}"
+        !out.contains("cargo install yeetz-bedrock"),
+        "no update command on a current version: {out}"
     );
+    assert!(!out.contains("version gate inactive"), "{out}");
+    // check/build never touch the gate.
     let (c2, out2, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
     assert_eq!(c2, 0);
     assert!(
@@ -403,16 +415,136 @@ fn version_gate_notice_printed() {
 }
 
 #[test]
+fn version_gate_stale_refuses() {
+    // Registry reports a NEWER version than the local binary → init refuses
+    // (exit 1) with the update command.
+    let s = Scratch::new("gate-stale");
+    let stale = version_fixture("99.0.0");
+    let (c, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        Some(stale.to_str().unwrap()),
+    );
+    let combined = format!("{out}\n{err}");
+    assert_eq!(c, 1, "a stale binary must refuse to seed:\n{combined}");
+    assert!(
+        combined.contains("cargo install yeetz-bedrock --force"),
+        "update command named: {combined}"
+    );
+    assert!(
+        combined.contains("v99.0.0"),
+        "published version named: {combined}"
+    );
+    assert!(
+        !s.path().join("situation").exists(),
+        "a refused init must not write anything"
+    );
+}
+
+#[test]
+fn version_gate_lookup_failure_is_loud() {
+    // A failed lookup (unreadable fixture) is a LOUD exit-1 refusal naming
+    // the reason and the documented --offline escape.
+    let s = Scratch::new("gate-fail");
+    let missing = s.path().join("does-not-exist.json");
+    let (c, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        Some(missing.to_str().unwrap()),
+    );
+    let combined = format!("{out}\n{err}");
+    assert_eq!(c, 1, "a failed lookup must refuse:\n{combined}");
+    assert!(
+        combined.contains("unreadable"),
+        "named reason present: {combined}"
+    );
+    assert!(
+        combined.contains("--offline"),
+        "offline escape documented: {combined}"
+    );
+
+    // A malformed body (valid read, bad JSON) is the same loud refusal.
+    let s2 = Scratch::new("gate-fail-parse");
+    let malformed = manifest().join("tests/fixtures/version/malformed.json");
+    let (c2, out2, err2) = run_gate(
+        &["init", s2.path().to_str().unwrap()],
+        &manifest(),
+        Some(malformed.to_str().unwrap()),
+    );
+    let combined2 = format!("{out2}\n{err2}");
+    assert_eq!(c2, 1, "malformed registry body must refuse:\n{combined2}");
+    assert!(
+        combined2.contains("not valid JSON"),
+        "parse failure named: {combined2}"
+    );
+    assert!(combined2.contains("--offline"), "{combined2}");
+}
+
+#[test]
+fn version_gate_offline_escapes_failure_and_stamps() {
+    // --offline is the documented escape from a failed lookup: init proceeds
+    // and the epoch record stamps `offline: true` (Defect-1 acceptance).
+    let s = Scratch::new("gate-offline");
+    let missing = s.path().join("does-not-exist.json");
+    let (c, out, err) = run_gate(
+        &["init", "--offline", s.path().to_str().unwrap()],
+        &manifest(),
+        Some(missing.to_str().unwrap()),
+    );
+    let combined = format!("{out}\n{err}");
+    assert_eq!(c, 0, "--offline must escape a failed lookup:\n{combined}");
+    assert!(
+        out.contains("version gate skipped"),
+        "--offline notice printed: {out}"
+    );
+    let record = s.path().join("situation/record");
+    let fname = std::fs::read_dir(&record)
+        .unwrap()
+        .flatten()
+        .next()
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .into_owned();
+    let text = std::fs::read_to_string(record.join(&fname)).unwrap();
+    assert!(
+        text.contains("offline: true"),
+        "offline must stamp the epoch record:\n{text}"
+    );
+}
+
+#[test]
+fn version_gate_zero_versions_is_inactive_notice() {
+    // The "inactive until first publication" path exists ONLY when the
+    // registry genuinely reports zero versions; init proceeds with a notice.
+    let s = Scratch::new("gate-zero");
+    let zero = manifest().join("tests/fixtures/version/zero.json");
+    let (c, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        Some(zero.to_str().unwrap()),
+    );
+    assert_eq!(
+        c, 0,
+        "zero published versions must not refuse:\n{out}\n{err}"
+    );
+    assert!(
+        out.contains("no published") && out.contains("first-publication"),
+        "zero-versions notice printed: {out}"
+    );
+}
+
+#[test]
 fn init_from_bad_seed_layout_is_loud() {
     // A seed without the situation/ skeleton → clear error.
     let bad_seed = fixture_seed().join("..").join("__nonexistent__");
     let s = Scratch::new("badseed");
-    let out = Command::new(bedrock_exe())
-        .args(["init", s.path().to_str().unwrap()])
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
-        .env("BEDROCK_SEED", &bad_seed)
-        .output()
-        .unwrap();
+        .env("BEDROCK_SEED", &bad_seed);
+    use_current_gate(&mut cmd);
+    let out = cmd.output().unwrap();
     let text = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
@@ -441,12 +573,12 @@ fn installed_workflow_is_promoted() {
         "name: bedrock\non: [push]\n",
     )
     .unwrap();
-    let out = Command::new(bedrock_exe())
-        .args(["init", s.path().to_str().unwrap()])
+    let mut cmd = Command::new(bedrock_exe());
+    cmd.args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
-        .env("BEDROCK_SEED", seed_copy.dir.join("seed"))
-        .output()
-        .unwrap();
+        .env("BEDROCK_SEED", seed_copy.dir.join("seed"));
+    use_current_gate(&mut cmd);
+    let out = cmd.output().unwrap();
     assert_eq!(out.status.code(), Some(0), "{:?}", out);
     // The workflow template lands in the repo but NOT under seed/ (it was
     // promoted to .github/workflows).
@@ -521,12 +653,12 @@ fn init_accepts_w3_skeleton_layout() {
     .unwrap();
 
     let s = Scratch::new("init-w3");
-    let out = std::process::Command::new(bedrock_exe())
-        .args(["init", s.path().to_str().unwrap()])
+    let mut cmd = std::process::Command::new(bedrock_exe());
+    cmd.args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
-        .env("BEDROCK_SEED", seed_copy.dir.join("seed"))
-        .output()
-        .unwrap();
+        .env("BEDROCK_SEED", seed_copy.dir.join("seed"));
+    use_current_gate(&mut cmd);
+    let out = cmd.output().unwrap();
     assert_eq!(
         out.status.code(),
         Some(0),

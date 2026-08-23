@@ -74,6 +74,32 @@ fn c4_schema_polarity() {
 }
 
 #[test]
+fn c4_vertex_id_base_polarity() {
+    // Defect-2 regression: the namespace schemas accept a CONSUMER repo base
+    // (https://yeetz.dev/<repo>/vertex/<slug>) for situated vertices, while
+    // floor content stays bedrock-namespaced by law.
+    // Pass pole: situated vertices under a repo IRI base (architecture and
+    // definition, layered situated) validate — the schemas' vertexId pattern
+    // accepts either base, with an identical slug pattern.
+    let good = materialize("C4/good");
+    build_and_check_ok(&good);
+
+    // Fail pole: a `layer: floor` vertex under a repo base must FAIL C4 —
+    // floor is bedrock-namespaced (the floor gate binds layer:floor @ids to
+    // the bedrock base).
+    let bad = materialize("C4/bad");
+    let combined = check_fails_with(&bad, "C4");
+    assert!(
+        combined.contains("floor-repo-base.yamlld"),
+        "floor-out-of-base fixture named: {combined}"
+    );
+    assert!(
+        combined.contains("https://yeetz.dev/myrepo/vertex/invariant-floor-renamed"),
+        "offending @id named: {combined}"
+    );
+}
+
+#[test]
 fn c5_edge_resolution_polarity() {
     let good = materialize("C5/good");
     build_and_check_ok(&good);

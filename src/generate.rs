@@ -132,10 +132,8 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
 
     // 2. Invariants.
     out.push_str("## Invariants — breaking any of these is wrong, whatever else is right\n\n");
-    let mut n = 1;
-    for inv in &invariants {
+    for (n, inv) in (1..).zip(&invariants) {
         out.push_str(&format!("{n}. {}\n", inv.statement.trim()));
-        n += 1;
     }
     if invariants.is_empty() {
         out.push_str("_None declared yet._\n");

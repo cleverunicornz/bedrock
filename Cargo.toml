@@ -1,6 +1,6 @@
 [package]
 name = "yeetz-bedrock"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 rust-version = "1.85"
 description = "bedrock — compile an org's situation/ graph into a deterministic TriG register and AGENTS.md projection"
@@ -42,6 +42,17 @@ include_dir = "=0.7.4"     # embeds the seed/ tree at compile time (SPINE §1 em
 # regex scanning is forbidden). serde_norway resolves anchors internally and
 # exposes no syntax API, so we scan tokens directly.
 unsafe-libyaml-norway = "=0.2.15"
+# crates.io lookup for the SPINE §1 version gate (init/adopt only). reqwest is
+# ALREADY a transitive dependency of jsonschema (its resolve-http/referencing
+# feature), so pinning it directly here adds no new crates to the resolver tree.
+# Features mirror exactly what jsonschema 0.50 activates (blocking + rustls via
+# aws-lc-rs); the `rustls-no-provider` pairing keeps ONE crypto provider shared.
+reqwest = { version = "=0.13.4", default-features = false, features = ["blocking", "json", "http2", "rustls-no-provider"] }
+# rustls crypto-provider install for the gate's reqwest client: the
+# `rustls-no-provider` combo (already in the tree via jsonschema) mandates an
+# explicit `install_default()` before a Client builds — the same call
+# jsonschema's own retriever makes. Draft/aws-lc-rs only; no new crates.
+rustls = { version = "=0.23.43", features = ["aws-lc-rs"] }
 
 [profile.release]
 lto = true

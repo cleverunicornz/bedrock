@@ -3,14 +3,28 @@
 
 use crate::check::{self, Compiled};
 use crate::errors::{Fatal, Violation};
+use serde_json::Value as JsonValue;
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
-/// Version gate (SPINE §1): until the crate's first publication the gate is
-/// a no-op that prints a notice. Once published, flip this to `true` and the
-/// network check (against crates.io's `yeetz-bedrock`) becomes active — it
-/// must never run for `check`/`build`, only `init`/`adopt`.
-pub const VERSION_GATE_ENABLED: bool = false;
+/// crates.io API endpoint whose response carries the latest published
+/// `yeetz-bedrock` version (SPINE §1 version gate). `--offline` dodges it;
+/// `check`/`build`/`update` never touch the network.
+pub const CRATES_IO_ENDPOINT: &str = "https://crates.io/api/v1/crates/yeetz-bedrock";
+
+/// Version-lookup test seam: when this env var is set, `init`/`adopt` read
+/// the named file as the crates.io JSON response instead of calling the
+/// network. A path that cannot be read or that holds malformed JSON drives
+/// the LOUD failure path deterministically (tasks: mock the lookup via an
+/// env override pointing at a fixture JSON).
+pub const VERSION_LOOKUP_ENV: &str = "BEDROCK_VERSION_JSON";
+
+/// The `bedrock version` (the running binary's own), rendered once.
+fn local_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
 
 /// `bedrock build` — compile TriG + regenerate AGENTS.md.
 ///
@@ -613,22 +627,163 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
-/// The version gate: currently a no-op with a notice until first publication.
-/// `--offline` is stamped into the epoch record regardless.
+/// The version gate (SPINE §1): init/adopt query crates.io for the latest
+/// `yeetz-bedrock` and refuse when this binary is stale; a failed lookup is
+/// a LOUD refusal naming the reason, with the documented `--offline` escape
+/// (which still stamps the version into the epoch record). The "inactive
+/// until first publication" path exists only when the registry genuinely
+/// reports zero versions. `--offline` skips the lookup entirely.
+/// Network is never touched by check/build/update.
 fn version_gate(cmd: &str, offline: bool) -> Result<(), Fatal> {
-    if VERSION_GATE_ENABLED {
-        // TODO(publication): query crates.io for the latest `yeetz-bedrock`; if
-        // the running binary is stale, refuse and print the update command;
-        // `--offline` skips the check but still stamps the version into the
-        // record (SPINE §1). Network MUST never be touched by check/build.
-        let _ = offline;
-    } else {
+    let local = local_version();
+    if offline {
         println!(
-            "bedrock {}: version gate inactive until the crate's first publication (SPINE §1)",
-            cmd
+            "bedrock {cmd}: --offline: version gate skipped ({local} used as-is; version stamped into the epoch record)"
         );
+        return Ok(());
     }
-    Ok(())
+    match lookup_latest() {
+        Lookup::Latest(latest) => match compare_versions(local, &latest) {
+            Ordering::Less => Err(Fatal(format!(
+                "bedrock {cmd}: this binary is bedrock v{local}, but the latest published \
+                 yeetz-bedrock on crates.io is v{latest}. Refusing to seed a repo from a stale \
+                 binary. Upgrade with: `cargo install yeetz-bedrock --force`. \
+                 (To proceed deliberately on a stale binary, run with `--offline` — the version \
+                 is still stamped into the epoch record.)"
+            ))),
+            Ordering::Greater => {
+                println!(
+                    "bedrock {cmd}: running v{local}, newer than the published v{latest}; proceeding"
+                );
+                Ok(())
+            }
+            Ordering::Equal => Ok(()),
+        },
+        Lookup::None => {
+            println!(
+                "bedrock {cmd}: version gate inactive — crates.io reports no published \
+                 yeetz-bedrock versions yet (SPINE §1 first-publication notice)"
+            );
+            Ok(())
+        }
+        Lookup::Failed(reason) => Err(Fatal(format!(
+            "bedrock {cmd}: version gate: cannot determine the latest yeetz-bedrock version — \
+             {reason}. Refusing to seed a repo from an unverifiable binary. Retry with the \
+             network reachable, or run with `--offline` to skip the gate (the version is still \
+             stamped into the epoch record)."
+        ))),
+    }
+}
+
+/// The registry lookup outcome.
+enum Lookup {
+    /// Latest published version.
+    Latest(String),
+    /// The registry returned zero published versions (first-publication path).
+    None,
+    /// The lookup failed with a named reason (network/IO/parse).
+    Failed(String),
+}
+
+/// Classify a raw crates.io API response body.
+fn classify_registry_response(body: &[u8]) -> Lookup {
+    let value: serde_json::Value = match serde_json::from_slice(body) {
+        Ok(v) => v,
+        Err(e) => return Lookup::Failed(format!("crates.io response was not valid JSON: {e}")),
+    };
+    if let Some(max) = value.pointer("/crate/max_version").and_then(|v| v.as_str()) {
+        if !max.is_empty() {
+            return Lookup::Latest(max.to_string());
+        }
+    }
+    let num = value
+        .pointer("/crate/num_versions")
+        .and_then(JsonValue::as_u64);
+    let listed = value
+        .pointer("/crate/versions")
+        .and_then(JsonValue::as_array);
+    if num == Some(0) || listed.map(|l| l.is_empty()).unwrap_or(false) {
+        return Lookup::None;
+    }
+    Lookup::Failed("crates.io response carried no max_version and no version list".to_string())
+}
+
+/// Fetch the crates.io API response: the real HTTPS call, or the
+/// `BEDROCK_VERSION_JSON` fixture seam when set (tests).
+fn lookup_latest() -> Lookup {
+    if let Some(path) = std::env::var_os(VERSION_LOOKUP_ENV) {
+        let path = PathBuf::from(path);
+        return match std::fs::read(&path) {
+            Ok(bytes) => classify_registry_response(&bytes),
+            Err(e) => Lookup::Failed(format!("{} unreadable: {e}", path.display())),
+        };
+    }
+    match fetch_from_crates_io() {
+        Ok(Some(body)) => classify_registry_response(&body),
+        Ok(None) => Lookup::None, // 404: the crate was never published
+        Err(reason) => Lookup::Failed(reason),
+    }
+}
+
+/// The real crates.io HTTPS query. Waits at most 15s, then fails loud.
+/// `Ok(None)` = the registry returned 404 — the crate was never published,
+/// which is the genuine zero-versions case (first-publication notice), not a
+/// failure.
+fn fetch_from_crates_io() -> Result<Option<Vec<u8>>, String> {
+    // The tree's reqwest is built with `rustls-no-provider` (jsonschema's
+    // choice), so the rustls crypto provider must be installed before a
+    // Client builds. Idempotent: a provider already installed (by jsonschema
+    // or a prior call) yields Err(AlreadyInstalled) which we ignore.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent(format!(
+            "bedrock/{} (crates.io version gate; https://github.com/cleverunicornz/bedrock)",
+            local_version()
+        ))
+        .build()
+        .map_err(|e| format!("http client could not be built: {e}"))?;
+    let resp = client
+        .get(CRATES_IO_ENDPOINT)
+        .send()
+        .map_err(|e| format!("crates.io lookup failed: {e}"))?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let resp = resp
+        .error_for_status()
+        .map_err(|e| format!("crates.io lookup failed: {e}"))?;
+    let body = resp
+        .bytes()
+        .map(|b| b.to_vec())
+        .map_err(|e| format!("crates.io lookup failed: {e}"))?;
+    Ok(Some(body))
+}
+
+/// Numeric dotted-version comparison (`x.y.z[-pre]`; any pre-release/build
+/// suffix is ignored — releases are stable triples). Ordering per semver on
+/// the numeric part.
+fn compare_versions(a: &str, b: &str) -> Ordering {
+    fn nums(v: &str) -> Vec<u64> {
+        v.split(['-', '+'])
+            .next()
+            .unwrap_or(v)
+            .split('.')
+            .map(|p| p.parse::<u64>().unwrap_or(0))
+            .collect()
+    }
+    let (na, nb) = (nums(a), nums(b));
+    for i in 0..na.len().max(nb.len()) {
+        let (x, y) = (
+            na.get(i).copied().unwrap_or(0),
+            nb.get(i).copied().unwrap_or(0),
+        );
+        match x.cmp(&y) {
+            Ordering::Equal => {}
+            other => return other,
+        }
+    }
+    Ordering::Equal
 }
 
 /// Finalize: compile + write artifacts + verify, then emit the instruction

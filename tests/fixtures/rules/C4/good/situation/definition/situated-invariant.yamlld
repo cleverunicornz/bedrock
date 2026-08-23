@@ -1,0 +1,8 @@
+# Pass pole (defect 2): a `layer: situated` invariant under the repo base
+# must validate — situated content is repo-namespaced, slug pattern identical.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/myrepo/vertex/invariant-repo-law"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Repo-local invariant"
+layer: situated
+statement: "A repo-local invariant authored under the repo IRI base."

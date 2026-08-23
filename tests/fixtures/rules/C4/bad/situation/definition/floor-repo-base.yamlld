@@ -1,0 +1,9 @@
+# Fail pole (defect 2): floor is bedrock-namespaced by law. A `layer: floor`
+# vertex under a REPO base must fail the definition schema (the floor gate
+# binds floor to the bedrock @id base).
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/myrepo/vertex/invariant-floor-renamed"
+"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+label: "Floor invariant under a repo base"
+layer: floor
+statement: "Floor content must stay bedrock-namespaced."

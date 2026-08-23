@@ -23,11 +23,15 @@ Usage:
   bedrock --version / -V             print version.
 
 Flags:
-  --offline     skip the (post-publication) version gate; the version is still stamped into the
-                epoch record. Only meaningful for init/adopt.
+  --offline     skip the version gate; the running version is still stamped into the epoch
+                record. Only meaningful for init/adopt.
   DIR           repo root; defaults to the current directory.
 
-Until the crate's first publication the version gate is a no-op with a notice (SPINE §1).
+Version gate (SPINE §1): init/adopt query crates.io for the latest published yeetz-bedrock;
+an older local binary is refused with the update command. A lookup failure (no network, HTTP
+error) is a loud refusal naming the reason — `--offline` is the documented escape. The gate is
+inactive (a notice) only while the registry reports zero published versions, and never runs for
+check/build (CI must not depend on the network).
 ";
 
 pub enum Command {

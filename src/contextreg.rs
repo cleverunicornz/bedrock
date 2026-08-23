@@ -41,8 +41,10 @@ pub const BASE_IRI: &str = "https://yeetz.dev/bedrock/path/";
 /// reads the same predicate-objects.
 pub const PATH_PREFIX: &str = "https://yeetz.dev/bedrock/path/";
 
-/// `https://yeetz.dev/bedrock/vertex/` — the namespace of vertex @ids
-/// (W2 contract, enforced by `seed/schemas/*.json` vertexId patterns).
+/// `https://yeetz.dev/bedrock/vertex/` — the BEDROCK base of vertex @ids
+/// (floor content only; honest floor vertices, epoch records). Situated
+/// vertices live under the repo base `https://yeetz.dev/<repo>/vertex/`;
+/// `seed/schemas/*.json` vertexId patterns accept both (defect 0.2.2 fix).
 pub const VERTEX_PREFIX: &str = "https://yeetz.dev/bedrock/vertex/";
 
 /// The six situation namespaces (SPINE §3).

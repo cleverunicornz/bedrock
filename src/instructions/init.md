@@ -49,9 +49,14 @@ it by hand; delete any other copy. This law is non-negotiable.
 1. Write `situation/<ns>/<local-name>.yamlld`: `@id`, `@type`, `label` or a
    one-line description, and typed edges. Copy an existing vertex's shape;
    add a `statement` to invariants.
-2. Run `bedrock build`. It re-checks, compiles YAML-LD to deterministic TriG
+2. `@id` bases: floor vertices (shipped by the seed, `layer: floor`) live
+   under the bedrock base `https://yeetz.dev/bedrock/vertex/<local>`; your
+   own situated vertices use your repo base `https://yeetz.dev/<repo>/vertex/
+   <local>`. Same slug pattern under both; the schemas enforce that floor is
+   bedrock-namespaced.
+3. Run `bedrock build`. It re-checks, compiles YAML-LD to deterministic TriG
    (`situation/graph.trig`), and regenerates `AGENTS.md`.
-3. If check fails: one violation per line, `RULE path:line message`. Fix the
+4. If check fails: one violation per line, `RULE path:line message`. Fix the
    cause — `build` refuses to proceed while check is red.
 
 ## 6. Commit and PR
