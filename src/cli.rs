@@ -12,10 +12,12 @@ Usage:
                                      print the init instruction set.
   bedrock adopt  [--offline] [DIR]   epoch-change an EXISTING repo: same install, plus an epoch
                                      record vertex declaring the cut line.
-  bedrock check  [DIR]               validate situation/ (§4 C1–C7); CI entrypoint. Exit 1 with one
-                                     `RULE path:line message` per violation.
+  bedrock check  [DIR]               validate situation/ (§4 C1–C10); CI entrypoint. Prints the size
+                                     report: total AGENTS.md bytes + compiled faces over the 4096-char
+                                     soft budget (SOFT lines — advisory, never failing). Exit 1 with
+                                     one `RULE path:line message` per violation.
   bedrock build  [DIR]               check, then compile the root AGENTS.md — the complete TriG
-                                     graph. Fails if check fails.
+                                     graph — and print the size report. Fails if check fails.
   bedrock update [DIR]               refresh the installed base files (schemas, context, operating
                                      reference, missing workflow template) from this binary's embedded
                                      copies; print exactly what changed; then run check + build.
@@ -106,7 +108,10 @@ pub fn run(cmd: Command) -> Result<i32, Fatal> {
             Ok(0)
         }
         Command::Check { dir } => {
-            let (violations, _) = crate::check::run(&dir)?;
+            let (violations, compiled) = crate::check::run(&dir)?;
+            if let Some(c) = &compiled {
+                crate::install::print_report(c);
+            }
             if violations.is_empty() {
                 println!("bedrock check: {} violations", 0);
                 Ok(0)

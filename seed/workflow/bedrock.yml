@@ -1,8 +1,18 @@
 # Bedrock CI template — installable by copy into `.github/workflows/`.
 #
-# Runs `bedrock check` + `bedrock build` whenever situation/ changes and
-# fails if the regenerated output (the root AGENTS.md, the compiled graph) differs
-# from what is committed. Fork pull requests never run the job.
+# The dry run: every PR touching situation/ (or the generated AGENTS.md)
+# recompiles bedrock from the latest open-source main, runs `bedrock check`
+# (hard rules C1–C10, including the C1 byte-drift gate: the committed
+# AGENTS.md must match regeneration), and surfaces the size report — total
+# artifact bytes plus SOFT lines for any compiled face over the 4096-char
+# soft budget (advisory, never failing). The agent reviews the report and
+# the AGENTS.md diff in the PR itself; a human merges; main never carries a
+# stale graph. Fork pull requests never run the job.
+#
+# Always-latest, deliberately unpinned: bedrock is the org's base protocol
+# and changes rarely — when it changes, every repo's next situation PR goes
+# red together (C10 digest-skew names `bedrock update` as the fix), which is
+# exactly the epoch sweep the protocol wants.
 
 name: bedrock
 
@@ -10,9 +20,11 @@ on:
   push:
     paths:
       - 'situation/**'
+      - 'AGENTS.md'
   pull_request:
     paths:
       - 'situation/**'
+      - 'AGENTS.md'
 
 jobs:
   bedrock:
@@ -23,26 +35,31 @@ jobs:
     # committed graph, so skip fork PRs entirely.
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
-    env:
-      # Placeholder — pin the exact bedrock version this repo operates under.
-      # Set the real released version (or pinned nightly) before enabling.
-      BEDROCK_VERSION: '0.2.1'
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install bedrock ${{ env.BEDROCK_VERSION }}
-        # Pinned install of the bedrock binary (crate yeetz-bedrock).
-        # Swap for a direct prebuilt-binary download once releases publish
-        # assets; BEDROCK_VERSION stays the single version knob.
+      - name: Install bedrock (latest from source)
+        # Always the latest published protocol: compile the binary fresh
+        # from the bedrock repository's default branch. No version knob —
+        # a protocol change is meant to land everywhere on the next run.
         run: |
-          cargo install --locked --version "$BEDROCK_VERSION" yeetz-bedrock
+          cargo install --locked --force --git https://github.com/cleverunicornz/bedrock yeetz-bedrock
 
-      - name: bedrock check
-        run: bedrock check
+      - name: bedrock check (dry run + size report)
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          {
+            echo '## bedrock report'
+            echo '```'
+            bedrock check || status=$?
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: bedrock build
         run: bedrock build
@@ -51,6 +68,6 @@ jobs:
         run: |
           if ! git diff --exit-code -- AGENTS.md; then
             echo "error: AGENTS.md (the compiled graph) is out of date." >&2
-            echo "run 'bedrock build' and commit the regenerated output." >&2
+            echo "run 'bedrock build' and commit the regenerated output with your situation/ change." >&2
             exit 1
           fi

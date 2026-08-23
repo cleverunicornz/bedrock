@@ -62,7 +62,11 @@ root, generated. `README.md` at root only.
 ## 4. Vertex grammar and check rules
 
 Source files are YAML-LD: YAML 1.2 documents that map 1:1 to JSON-LD 1.1
-under the constrained profile below. `bedrock check` enforces, in order:
+under the constrained profile below — with ONE field exempt from
+compilation (the face/body law, 0.5.0): `body`, a literal block scalar of
+free-form depth prose, unbounded. The face (everything else) compiles into
+the graph; the body never does — it is the document the vertex's automatic
+`document` edge delivers. `bedrock check` enforces, in order:
 
 C1. Placement: every `situation/` file matches §3; any `AGENTS.md` outside
     repo root → FAIL; hand-edit drift of root AGENTS.md (differs from
@@ -78,12 +82,19 @@ C3. LD profile: one `@context` — either the embedded repo-local context or
 C4. Schema: each namespace has a JSON Schema in `seed/schemas/`; every vertex
     validates against its namespace schema (jsonschema crate). Minimum vertex:
     `@id`, `@type`, `label` or one-line description, ≥0 typed edges, optional
-    `source` pointer into `references/` or repo paths.
+    `source` pointer into `references/` or repo paths, optional uncompiled
+    `body` (unbounded depth prose).
 C5. References: every edge target resolves — to another vertex `@id` in this
     repo's graph, or to an existing repo path. Dangling → FAIL, named exactly.
 C6. Determinism: `build` output is byte-stable — same input, same bytes.
 C7. Parse-back: emitted TriG re-parses (oxttl) to a dataset equal to the one
     compiled from source; inequality → FAIL.
+
+Advisory (never failing): `check` and `build` print the size report — total
+AGENTS.md bytes plus a SOFT line per compiled face over the 4096-char soft
+budget (≈1k tokens; the target band is 500–1000 tokens). Soft is soft:
+guidance for the authoring agent in the PR dry run, never an exit-code
+change.
 
 Failure output: one violation per line, `RULE path:line message`, exit 1.
 Brittleness with intent: loud, exact, agent-fixable.
@@ -92,11 +103,13 @@ Brittleness with intent: loud, exact, agent-fixable.
 
 ```
 YAML (serde_norway, exact-pinned) → serde_json::Value
+  → `body` stripped (face/body law: depth prose never compiles)
   → oxjsonld (JSON-LD 1.1, remote loading disabled) → oxrdf Quads
   → deterministic sort (subject IRI, predicate IRI, object, graph)
   → oxttl TriGSerializer (sorted @prefix prelude)
   → AGENTS.md generation (comment preamble + the complete TriG body)
   → parse-back equivalence on the emitted file itself
+  → size report to stdout (advisory soft face budget)
 ```
 
 Exact pins in Cargo.toml (`=x.y.z`). Golden tests: fixtures in
@@ -118,7 +131,9 @@ AGENTS.md (generated — THE single artifact):
 There is no separate graph file and no prose projection: `bedrock build`
 emits exactly one artifact, the root AGENTS.md. Every vertex carries an
 automatic `document` edge to its source file — the pointer is the document
-itself; an agent pulls that thread to ingest the full node context.
+itself: the face an agent already holds in the injected graph, plus the
+uncompiled `body` depth it pulls the thread to read. Editing only a body
+changes no bytes of the artifact.
 
 ## 6. Epoch record (adopt)
 

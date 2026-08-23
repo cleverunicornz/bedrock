@@ -1,0 +1,71 @@
+# Decision record: closed 2026-08-23 on execute/vertex-body-soft-budget.
+# The face carries the collapse; the body carries the full rationale — this
+# vertex is itself the first worked example of the face/body law it records.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-vertex-face-body"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+label: "Vertices are one file: compiled face + uncompiled body"
+references:
+  - "https://yeetz.dev/bedrock/vertex/invariant-16-agents-md-register"
+  - "https://yeetz.dev/bedrock/vertex/invariant-01-possibility-space"
+statement: >
+  Chose the single-file vertex anatomy (0.5.0): the face — everything but
+  `body` — compiles into the graph; `body`, a literal block scalar of
+  unbounded depth prose, never compiles and is what the automatic `document`
+  edge delivers. Face size is a SOFT budget (4096 chars ≈ 1k tokens, target
+  500–1000), reported by check/build, never a violation. Consumer CI
+  installs bedrock always-latest from source and dry-runs check + report on
+  every situation PR; the artifact is committed in the PR itself. Rejected:
+  two-file depth (vertex + references/ doc) as the only depth channel — the
+  document edge stays circular and one concept splits across two files; a
+  hard face cap — brittle where guidance suffices; merge-time bot builds of
+  AGENTS.md — a second writer to main and a stale-graph window. Revisit if
+  soft warnings prove ignored at scale (escalate to a repo-configurable
+  artifact byte ceiling), or if bodies grow shared enough that references/
+  and body duplicate each other.
+timestamp: "2026-08-23T17:30:00"
+body: |
+  ## Why one file
+
+  The graph face and its depth are one concept: a node and the document
+  under it. Splitting them across a vertex file and a references/ doc made
+  the automatic `document` edge circular — pulling the thread delivered the
+  same triples the agent already held, teaching agents to distrust edges.
+  With the body in the file, the pointer IS the document.
+
+  ## Why the boundary is structural, not conventional
+
+  JSON-LD expansion drops unmapped terms, and the bedrock context maps no
+  `body` term and serves no `@vocab` — so a body could never compile by
+  accident of today's context. The compiler still strips `body` before
+  expansion deliberately: the boundary must survive any future context
+  edit, and a test pins it (no `bedrock:body` predicate ever reaches the
+  graph). The fuzziness of the compiled graph — snippet up top, weight
+  underneath — is enforced by the pipeline, not by hoping authors write
+  short.
+
+  ## Why soft, not hard
+
+  A face over 4096 chars is a smell, not a defect: floor invariants carry
+  their law verbatim and must never be truncated to satisfy a size gate.
+  The report gives the authoring agent the numbers — total artifact bytes,
+  every oversized face — in the PR dry run, where trimming is cheap. Hard
+  caps stay where they always were: schema field bounds (label 120,
+  statement/gate 4096) as the outer backstop.
+
+  ## Why always-latest CI
+
+  bedrock is the org's base protocol; it changes rarely and, when it does,
+  categorically. Pinning versions per-repo staggers the epoch; installing
+  from latest source makes every repo's next situation PR go red together
+  (C10 digest-skew names `bedrock update` as the fix) — the volcanic sweep
+  is the mechanism, not an accident.
+
+  ## The consumer loop this fixes
+
+  think/ or reflect/ branch → edit situation/** only → run latest bedrock →
+  commit source + regenerated AGENTS.md together → PR dry-runs check +
+  report → the agent reviews the artifact diff and trims flagged faces → a
+  human merges. main never carries a stale graph; one writer per ref holds;
+  a body can carry thousands of tokens without costing any agent context
+  until the thread is pulled.
