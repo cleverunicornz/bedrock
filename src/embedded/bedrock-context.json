@@ -38,6 +38,10 @@
       "@id": "https://yeetz.dev/bedrock/member-of",
       "@type": "@id"
     },
+    "supersedes": {
+      "@id": "https://yeetz.dev/bedrock/supersedes",
+      "@type": "@id"
+    },
     "source": {
       "@id": "https://yeetz.dev/bedrock/source",
       "@type": "@id"

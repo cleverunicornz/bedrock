@@ -1,0 +1,6 @@
+# C4 bad: a Decision missing `timestamp` — the record schema's Decision arm
+# requires statement AND timestamp.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-no-timestamp"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+statement: "Statement is present; the timestamp is not."

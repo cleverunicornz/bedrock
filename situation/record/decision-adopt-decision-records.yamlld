@@ -1,0 +1,23 @@
+# The first Decision vertex: records the adoption of the Decision base type
+# itself (0.3.0 base protocol). Doubles as the worked example of the shape —
+# chosen / rejected / revisit-when in bounded prose. No template, no status
+# field; written once at the moment of collapse.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-adopt-decision-records"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+label: "Decisions are first-class records"
+statement: >
+  Chose to represent architecture decisions as Decision vertices in record/,
+  with a supersedes edge forming the append-only chain floor invariant 15
+  legislates. Rejected: markdown ADR directories (a second truth outside the
+  graph — strands edges, forces full-document reads, the antithesis of
+  progressive disclosure); a stored status field (liveness is derivable from
+  the supersession chain; stored status would drift from it); separate
+  decision/decision-record vertex pairs (the record is the decision's only
+  durable form — two vertices double ceremony for zero assurance). Revisit if
+  decision volume makes the record/ graph noisy to walk, or if consumers need
+  register-level visibility of live decisions.
+timestamp: "2026-08-23T11:09:05"
+requires: "https://yeetz.dev/bedrock/vertex/invariant-15-decisions-append-only"
+references:
+  - "https://yeetz.dev/bedrock/vertex/invariant-01-possibility-space"

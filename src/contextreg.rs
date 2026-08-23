@@ -83,7 +83,7 @@ pub fn predicate(local: &str) -> String {
 /// §"Base ontology"): every vertex's `@type` must intersect this set — rule
 /// C9. Repo-specific archetypes ride alongside one of these in the same
 /// `@type` array; they never stand alone and never redefine a base term.
-pub const BASE_TYPES: [&str; 10] = [
+pub const BASE_TYPES: [&str; 11] = [
     "https://yeetz.dev/bedrock/ontology/Invariant",
     "https://yeetz.dev/bedrock/ontology/Breadcrumb",
     "https://yeetz.dev/bedrock/ontology/Term",
@@ -94,6 +94,7 @@ pub const BASE_TYPES: [&str; 10] = [
     "https://yeetz.dev/bedrock/ontology/EpochRecord",
     "https://yeetz.dev/bedrock/ontology/DeployRecord",
     "https://yeetz.dev/bedrock/ontology/ReflectVerdict",
+    "https://yeetz.dev/bedrock/ontology/Decision",
 ];
 
 /// Base IRIs used by check rules C8 (witness gate) and C10 (digest skew).

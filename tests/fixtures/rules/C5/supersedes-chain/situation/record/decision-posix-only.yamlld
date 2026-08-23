@@ -1,0 +1,7 @@
+# C5 good: a record/ Decision vertex — the named collapse. No disposition,
+# no witnesses: C8 gates Plan and ReflectVerdict only.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-posix-only"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+statement: "POSIX-only for the scratch engine: no Windows caller exists today; revisit if a Windows port request lands."
+timestamp: "2026-08-01T09:00:00"

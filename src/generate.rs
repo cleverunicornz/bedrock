@@ -132,10 +132,8 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
 
     // 2. Invariants.
     out.push_str("## Invariants — breaking any of these is wrong, whatever else is right\n\n");
-    let mut n = 1;
-    for inv in &invariants {
+    for (n, inv) in (1..).zip(&invariants) {
         out.push_str(&format!("{n}. {}\n", inv.statement.trim()));
-        n += 1;
     }
     if invariants.is_empty() {
         out.push_str("_None declared yet._\n");
@@ -175,6 +173,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
     //    by init/adopt/update into situation/references/bedrock-operating.md
     //    (C10 guards it against drift).
     out.push_str("## Operating this repository\n\n");
+    out.push_str("- Work happens on verb-prefixed branches, one verb per state (these are branch names, not directories):\n");
     out.push_str("- think/ — explore and decide.\n");
     out.push_str("- plan/ — write the plan as a graph.\n");
     out.push_str("- execute/ — do the work.\n");
@@ -182,6 +181,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
     out.push_str("- deploy/ — place the result where it is recorded.\n");
     out.push_str("- Authoring loop: write a vertex, `bedrock check`, `bedrock build`, commit source AND generated output, open a PR — a human merges.\n");
     out.push_str("- The chain: every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured.\n");
+    out.push_str("- Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md\n");
     out.push_str("- The base protocol, in full — THE CHAIN, the ontology, every rule: situation/references/bedrock-operating.md\n");
     out.push('\n');
 

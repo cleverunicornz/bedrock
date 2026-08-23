@@ -23,7 +23,7 @@ Vertices live flat in their namespace: `situation/<ns>/<local-name>.yamlld`.
   `role: identity` names the repo in AGENTS.md.
 - `risk/` — present-tense warnings; delete the vertex when the risk retires.
 - `plan/` — execution graphs, the plans of record for each branch.
-- `record/` — epoch records, deploy placements, reflect verdicts.
+- `record/` — epoch records, deploy placements, reflect verdicts, decisions.
 - `references/` — depth documents; the only namespace that may nest and hold
   non-YAML-LD files (markdown).
 

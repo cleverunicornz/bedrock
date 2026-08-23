@@ -35,7 +35,7 @@ Vertices are flat files under `situation/` — six namespaces, no new
 top-level dirs; only `references/` may nest and hold markdown. `definition/`
 invariants; `architecture/` intent (its `role: identity` vertex names the
 repo); `risk/` warnings, deleted when retired; `plan/` graphs; `record/`
-epochs, deployments, verdicts; `references/` depth docs.
+epochs, deployments, verdicts, decisions; `references/` depth docs.
 
 ## 5. The five work verbs
 

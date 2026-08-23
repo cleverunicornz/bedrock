@@ -470,7 +470,7 @@ fn c9_base_type(value: &Value, rel: &str, src: &str) -> Vec<Violation> {
         rel,
         crate::errors::line_of(src, &bad),
         format!(
-            "vertex {bad} carries no base @type — every vertex must carry at least one of (Invariant|Breadcrumb|Term|Identity|SituationStructure|Risk|Plan|EpochRecord|DeployRecord|ReflectVerdict); repo archetypes ride alongside, never alone"
+            "vertex {bad} carries no base @type — every vertex must carry at least one of (Invariant|Breadcrumb|Term|Identity|SituationStructure|Risk|Plan|EpochRecord|DeployRecord|ReflectVerdict|Decision); repo archetypes ride alongside, never alone"
         ),
     )]
 }
