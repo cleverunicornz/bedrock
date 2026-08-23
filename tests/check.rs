@@ -178,6 +178,51 @@ fn c9_base_type_polarity() {
 }
 
 #[test]
+fn decision_record_and_supersedes_chain_pass() {
+    // Good (0.3.0): two record/ Decision vertices — the second carries
+    // `supersedes` pointing at the first's @id, proving the new edge
+    // resolves under C5. One vertex spells @type as a scalar, the other as
+    // an array with a repo archetype riding alongside (C9). Neither carries
+    // disposition/witnesses — C8 gates Plan and ReflectVerdict only.
+    let good = materialize("C5/supersedes-chain");
+    build_and_check_ok(&good);
+}
+
+#[test]
+fn decision_missing_required_fields_fails_c4() {
+    // Bad (0.3.0): one Decision missing `timestamp`, one missing
+    // `statement` — both required by the record schema's Decision arm.
+    let bad = materialize("C4/decision-missing-required");
+    let combined = check_fails_with(&bad, "C4");
+    assert!(combined.contains("required"), "{combined}");
+    assert!(combined.contains("timestamp"), "{combined}");
+    assert!(combined.contains("statement"), "{combined}");
+    assert!(
+        combined.contains("decision-no-timestamp.yamlld")
+            && combined.contains("decision-no-statement.yamlld"),
+        "both offending vertices named: {combined}"
+    );
+}
+
+#[test]
+fn supersedes_dangling_target_fails_c5() {
+    // Bad (0.3.0): a Decision whose `supersedes` edge points at a vertex
+    // @id that exists nowhere in this repo's graph — a dangling edge like
+    // any other.
+    let bad = materialize("C5/supersedes-dangling");
+    let combined = check_fails_with(&bad, "C5");
+    // The dangling-vertex violation names the unresolved target IRI.
+    assert!(
+        combined.contains("https://yeetz.dev/bedrock/vertex/decision-never-written"),
+        "{combined}"
+    );
+    assert!(
+        combined.contains("neither a vertex @id"),
+        "dangling-edge message present: {combined}"
+    );
+}
+
+#[test]
 fn c10_digest_skew_polarity() {
     // Good: installed base files byte-match this binary's canonical stamped
     // form — the embedded template + provenance stamp for the current
@@ -280,6 +325,19 @@ fn agents_md_register_content() {
     assert!(
         md.contains("every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured"),
         "the chain rendered in one line: {md}"
+    );
+    // 0.3.0 base protocol: the Decisions line, inserted between the chain
+    // line and the base-protocol pointer line.
+    assert!(
+        md.contains("- Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md"),
+        "the decisions line rendered verbatim: {md}"
+    );
+    let decisions_pos = md.find("- Decisions are records too:").unwrap();
+    let chain_pos = md.find("- The chain:").unwrap();
+    let pointer_pos = md.find("- The base protocol, in full").unwrap();
+    assert!(
+        chain_pos < decisions_pos && decisions_pos < pointer_pos,
+        "decisions line sits between the chain and the base-protocol pointer: {md}"
     );
     assert!(
         md.contains("situation/references/bedrock-operating.md"),

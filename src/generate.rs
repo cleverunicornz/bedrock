@@ -182,6 +182,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad]) -> String
     out.push_str("- deploy/ — place the result where it is recorded.\n");
     out.push_str("- Authoring loop: write a vertex, `bedrock check`, `bedrock build`, commit source AND generated output, open a PR — a human merges.\n");
     out.push_str("- The chain: every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured.\n");
+    out.push_str("- Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md\n");
     out.push_str("- The base protocol, in full — THE CHAIN, the ontology, every rule: situation/references/bedrock-operating.md\n");
     out.push('\n');
 

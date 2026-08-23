@@ -1,0 +1,7 @@
+# C4 bad: a Decision missing `statement` — the Decision arm requires both;
+# the label only satisfies the namespace-wide anyOf, not the Decision arm.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-no-statement"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+label: "Timestamp is present; the statement is not."
+timestamp: "2026-08-10T16:45:00"

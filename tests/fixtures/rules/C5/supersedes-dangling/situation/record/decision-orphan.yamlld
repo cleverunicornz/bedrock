@@ -1,0 +1,8 @@
+# C5 bad: `supersedes` points at a vertex @id that exists nowhere in this
+# repo's graph — a dangling edge, like every other IRI-valued edge.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-orphan"
+"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+statement: "Claims to replace an earlier decision that was never written."
+timestamp: "2026-08-15T11:00:00"
+supersedes: "https://yeetz.dev/bedrock/vertex/decision-never-written"

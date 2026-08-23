@@ -1,0 +1,11 @@
+# C5 good: a second Decision whose `supersedes` edge points at the first
+# vertex's @id — the edge resolves in this repo's graph. A repo archetype
+# rides alongside the base @type per C9.
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/decision-windows-revisited"
+"@type":
+  - "https://yeetz.dev/myrepo/PlatformDecision"
+  - "https://yeetz.dev/bedrock/ontology/Decision"
+statement: "Support Windows after all: the first downstream consumer arrived on Windows; the POSIX-only fork is closed."
+timestamp: "2026-08-20T14:30:00"
+supersedes: "https://yeetz.dev/bedrock/vertex/decision-posix-only"
