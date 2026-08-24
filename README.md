@@ -1,11 +1,11 @@
 # bedrock
 
-`bedrock` is the origin tool: it installs a machine-readable situation graph
-into a repository, compiles it into a deterministic triple format, and
-generates the one `AGENTS.md` that governs work there.
+`bedrock` installs a complete machine-readable YAML-LD situation store,
+validates every source, and compiles its current resident working set into
+the one deterministic `AGENTS.md` every agent receives.
 
-Seed a new repo, epoch-change an existing one, validate the graph in CI, and
-regenerate the file agents actually read — from a single binary.
+Seed a new repo, epoch-change an existing one, validate source and projection
+in CI, and regenerate the injected graph — from a single binary.
 
 ## Install
 
@@ -22,33 +22,34 @@ installs is `bedrock`.
   seed floor, generate root `AGENTS.md`, print the init instruction set.
 - `bedrock adopt` — epoch-change an existing repo: same install, plus an
   epoch record declaring the cut line.
-- `bedrock check` — validate `situation/`; the CI entrypoint.
-- `bedrock build` — compile YAML-LD to TriG and regenerate `AGENTS.md`;
-  refuses to run while `check` fails.
-- `bedrock update` — refresh the installed base files (schemas, context,
-  operating reference) from this binary's embedded copies, then check and
-  build; additive-safe, never touches repo-authored vertices.
+- `bedrock check` — validate complete source plus the resident projection;
+  print exact resident/cold counts and soft face budgets; the CI entrypoint.
+- `bedrock build` — regenerate resident TriG in AGENTS.md; refuses while
+  `check` fails.
+- `bedrock update` — refresh installed base files from this binary's embedded
+  copies, then check and build; never touches repo-authored vertices.
 - `bedrock help`  — the contract, short.
 
 ## The model
 
 Six situation namespaces, five work verbs, one `AGENTS.md` per repository.
 
-### Situation graph
+### Canonical store and resident graph
 
-Every repo carries `situation/` with exactly six namespace directories, each
-holding flat `*.yamlld` vertices:
+Every repo carries `situation/`, the complete validated store:
 
-- `definition/` — invariants and terms: the seed floor plus repo-local law.
-- `architecture/` — what this repo is and intends.
-- `risk/` — present-tense warnings; deleted when the risk retires.
-- `plan/` — execution graphs.
-- `record/` — epoch records, deploy placements, reflect verdicts.
-- `references/` — depth documents; the only namespace that may nest and hold
-  non-YAML-LD files.
+- `definition/`, `architecture/`, current `risk/` — resident knowledge.
+- `plan/` — complete Plans. Only `active` contributes a compact routing face;
+  draft/done/abandoned and all execution payload stay cold.
+- `record/` — Decisions resident; epoch/deploy/reflect records cold.
+- `references/` — cold shared depth; may nest and hold non-YAML-LD files.
 
-Vertices are YAML-LD mapped 1:1 to JSON-LD 1.1. The compiler emits
-byte-stable TriG: same input, same bytes.
+Cold means source-only, not discarded: the resident SituationStructure node
+discloses each path. Agents pull history or depth only when the task needs it.
+Every source stays schema- and edge-validated.
+
+AGENTS.md is the deterministic resident TriG projection, not the archive.
+Same source and states, same bytes.
 
 ### Work verbs
 
@@ -62,9 +63,8 @@ Work runs in short-lived branches, one verb per state:
 
 ### One AGENTS.md
 
-`bedrock build` regenerates the root `AGENTS.md` from the compiled graph:
-invariants first, then breadcrumbs, then where things live. Hand-editing it
-is drift; `check` fails on it rather than tolerating it.
+`bedrock build` regenerates root AGENTS.md from the resident working set.
+Hand-editing it is drift; `check` fails instead of tolerating it.
 
 ### Brittleness with intent
 

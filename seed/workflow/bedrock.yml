@@ -1,13 +1,12 @@
 # Bedrock CI template — installable by copy into `.github/workflows/`.
 #
-# The dry run: every PR touching situation/ (or the generated AGENTS.md)
-# recompiles bedrock from the latest open-source main, runs `bedrock check`
-# (hard rules C1–C10, including the C1 byte-drift gate: the committed
-# AGENTS.md must match regeneration), and surfaces the size report — total
-# artifact bytes plus SOFT lines for any compiled face over the 4096-char
-# soft budget (advisory, never failing). The agent reviews the report and
-# the AGENTS.md diff in the PR itself; a human merges; main never carries a
-# stale graph. Fork pull requests never run the job.
+# The dry run: every PR touching situation/ (or generated AGENTS.md)
+# recompiles bedrock from latest open-source main, validates complete source
+# plus resident projection (C1–C11, including C1 byte drift), and surfaces
+# exact artifact bytes, source/resident counts, Plan lifecycle, record
+# residency, and advisory SOFT resident faces over 4096 chars. The agent
+# reviews the report and artifact diff in the PR; a human merges; main never
+# carries a stale graph. Fork pull requests never run the job.
 #
 # Always-latest, deliberately unpinned: bedrock is the org's base protocol
 # and changes rarely — when it changes, every repo's next situation PR goes
@@ -67,7 +66,7 @@ jobs:
       - name: Verify generated output is committed
         run: |
           if ! git diff --exit-code -- AGENTS.md; then
-            echo "error: AGENTS.md (the compiled graph) is out of date." >&2
+            echo "error: AGENTS.md (the resident projection) is out of date." >&2
             echo "run 'bedrock build' and commit the regenerated output with your situation/ change." >&2
             exit 1
           fi

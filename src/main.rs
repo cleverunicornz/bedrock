@@ -1,9 +1,8 @@
 //! # bedrock
 //!
-//! A single Rust binary that seeds a repo with a YAML-LD `situation/`
-//! structure, validates it, and compiles it into ONE generated artifact:
-//! the root `AGENTS.md` — the complete [TriG] graph itself, injected into
-//! every agent context by the harness.
+//! A single Rust binary that seeds and validates a repo's complete YAML-LD
+//! `situation/`, then compiles its current resident working set into ONE
+//! generated artifact: root `AGENTS.md`, the TriG graph every agent receives.
 //!
 //! Six commands:
 //!
@@ -12,10 +11,10 @@
 //!   print the init instruction set.
 //! - `bedrock adopt [DIR]` — epoch-change an EXISTING repo: same install,
 //!   plus an epoch record vertex declaring the cut line.
-//! - `bedrock check [DIR]` — validate `situation/` (SPINE rules C1–C10); CI
-//!   entrypoint, exit 1 with one `RULE path:line message` per violation.
-//! - `bedrock build [DIR]` — `check`, then compile the root `AGENTS.md` —
-//!   the complete TriG graph.
+//! - `bedrock check [DIR]` — validate complete source plus resident projection
+//!   (SPINE rules C1–C11); CI entrypoint.
+//! - `bedrock build [DIR]` — `check`, then compile root `AGENTS.md`, the
+//!   resident TriG working-set projection.
 //! - `bedrock update [DIR]` — refresh the installed base files (schemas,
 //!   context, operating reference) from this binary's embedded copies, then
 //!   `check` + `build`.

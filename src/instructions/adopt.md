@@ -6,13 +6,12 @@ nested `AGENTS.md`. After your next commit, bedrock governs this repo.
 
 ## 1. The epoch record
 
-`situation/record/epoch-<utc-date>-<short-sha>.yamlld` fixes the cut line:
-after it, bedrock governs. Prior history — including the old AGENTS.md — is
-reference, never law. Root `AGENTS.md` is generated law: floor invariants,
-repo-local, breadcrumbs, where things live. Never hand-edit it. The base
-protocol lives at `situation/references/bedrock-operating.md` — the CHAIN
-(promise, oracle, witness, residual), the ontology, every rule. Read it
-before converting donor content.
+`situation/record/epoch-<utc-date>-<short-sha>.yamlld` fixes the cut line;
+it stays cold source. Prior history — including old AGENTS.md — is reference,
+never law. Root AGENTS.md is the generated resident working set; complete
+source/history stays in situation/. Never hand-edit the artifact. Read the
+base protocol at `situation/references/bedrock-operating.md` before
+converting donor content.
 
 ## 2. Convert donor content, forward-only
 
@@ -31,11 +30,11 @@ in vertices. Only root `AGENTS.md` remains — the one-AGENTS.md law.
 
 ## 4. The six namespaces
 
-Vertices are flat files under `situation/` — six namespaces, no new
-top-level dirs; only `references/` may nest and hold markdown. `definition/`
-invariants; `architecture/` intent (its `role: identity` vertex names the
-repo); `risk/` warnings, deleted when retired; `plan/` graphs; `record/`
-epochs, deployments, verdicts, decisions; `references/` depth docs.
+Vertices are flat under six namespaces. definition/architecture/current
+risk and Decisions are resident; only active Plan routing faces are
+resident. Draft/done/abandoned Plans, epoch/deploy/reflect records, bodies,
+and references are cold but fully validated and path-discoverable. Only
+references/ may nest and hold markdown.
 
 ## 5. The five work verbs
 
@@ -47,20 +46,19 @@ epochs, deployments, verdicts, decisions; `references/` depth docs.
 
 ## 6. Add a vertex and build
 
-1. Write `situation/<ns>/<local-name>.yamlld` — the face on top (`@id`,
-   `@type`, `label` or a one-line description, typed edges), depth in
-   `body: |` below; the face compiles, the body never does.
-2. Run `bedrock build`: re-checks, compiles YAML-LD into the root
-   `AGENTS.md` — the complete deterministic TriG graph — and prints the
-   size report (SOFT lines flag faces over 4096 chars; advisory only).
-   Failure prints `RULE path:line message`; fix the cause — build
-   refuses while red.
+1. Write `situation/<ns>/<local-name>.yamlld`: compact routing face on top,
+   node-local depth in `body: |`.
+2. Every Plan declares draft|active|done|abandoned. Only active projects a
+   routing face; execution payload stays cold.
+3. Run `bedrock build`: validate complete source, regenerate the resident
+   TriG in root AGENTS.md, and print resident/cold counts plus advisory SOFT
+   budgets. Fix each hard `RULE path:line message`; build refuses while red.
 
 ## 7. Commit and PR
 
-Commit the epoch record, converted vertices, deleted nested AGENTS.md,
-and the regenerated root `AGENTS.md` (the compiled graph); open a PR. A human merges — you
-do not merge your own.
+Commit the epoch record, converted vertices, deleted nested AGENTS.md, and
+regenerated root AGENTS.md (the resident projection); open a PR. A human
+merges — you do not merge your own.
 
 Summary: this commit is the cut; prior law is reference, not binding.
 Convert survivors, delete nested AGENTS.md files, build, PR for a human merge.

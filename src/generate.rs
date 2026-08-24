@@ -1,11 +1,10 @@
-//! AGENTS.md generation (SPINE §5, 0.4.0 base protocol).
+//! AGENTS.md resident-projection generation (SPINE §5, 0.6.0).
 //!
-//! One artifact: the root AGENTS.md IS the compiled graph — a `#`-comment
-//! preamble (machine stamp, how-to-read, identity title, the operating
-//! lines, digest marker) followed by the complete TriG body. No prose
-//! projection sections, no separate graph.trig: the file the harness
-//! injects into every agent context is the graph itself, and C7 parse-back
-//! reads that same file (the preamble is legal TriG comments).
+//! One artifact: root AGENTS.md IS the injected resident situation graph —
+//! a `#`-comment preamble followed by deterministic TriG. `situation/` is
+//! the complete validated store; the artifact carries the current working
+//! set. No prose projection, no graph.trig. C7 parse-back reads the same file
+//! the harness injects (the preamble is legal TriG comments).
 //!
 //! Matching is by IRI *local name* (last path segment), so it is robust to
 //! the ontology base IRI the seed context chooses.
@@ -30,12 +29,9 @@ fn literal_of(vqs: &[&Quad], names: &[&str]) -> Option<String> {
     None
 }
 
-/// Render the single generated artifact: the root AGENTS.md — a `#`-comment
-/// preamble (stamp, how-to-read, identity, operating lines, digest marker)
-/// followed by the complete compiled TriG body. The whole file is valid
-/// TriG (the preamble is comments), so C7 parse-back reads the same file
-/// agents read, and the harness injects the graph itself into every
-/// context window (SPINE §5, 0.4.0 base protocol).
+/// Render root AGENTS.md: a `#`-comment preamble followed by the resident
+/// TriG projection. The whole file is valid TriG, so C7 reads the exact file
+/// agents receive (SPINE §5, 0.6.0).
 pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body: &str) -> String {
     let repo_name = repo_root
         .file_name()
@@ -77,12 +73,11 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
         env!("CARGO_PKG_VERSION"),
     ));
     out.push_str("\n#\n");
-    out.push_str(
-        "# This file IS the situation graph: the complete TriG compiled from situation/.\n",
-    );
-    out.push_str("# The harness injects it into every agent context. Each vertex carries its\n");
-    out.push_str("# description and its relationships; follow `references`/`path` pointers into\n");
-    out.push_str("# situation/ to read the full document. Humans wanting prose read situation/.\n");
+    out.push_str("# This file IS the resident situation graph: the deterministic TriG working-set projection compiled from situation/.\n");
+    out.push_str("# The harness injects it into every agent context. `situation/` remains the complete validated store.\n");
+    out.push_str("# Definition, architecture, current risks, Decisions, and active Plan routing faces are resident.\n");
+    out.push_str("# Draft/done/abandoned Plans, episodic records, references, and bodies stay cold behind disclosed paths.\n");
+    out.push_str("# Follow `document`/`references`/`path` pointers into situation/ to pull depth only when the task needs it.\n");
     out.push_str("#\n");
     out.push_str("# NEVER hand-edit this file: it is built by `bedrock build`, and hand edits\n");
     out.push_str("# are detected and rejected by `bedrock check`. To change the graph, edit\n");
@@ -111,6 +106,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
     out.push_str("# - deploy/ — place the result where it is recorded.\n");
     out.push_str("# - Authoring loop: write a vertex, `bedrock check`, `bedrock build`, commit source AND generated output, open a PR — a human merges.\n");
     out.push_str("# - The chain: every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured.\n");
+    out.push_str("# - Plans: only active routing faces are resident; draft/done/abandoned plans stay under situation/plan/ and are read on demand through their document path.\n");
     out.push_str("# - Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md\n");
     out.push_str("# - The base protocol, in full — THE CHAIN, the ontology, every rule: situation/references/bedrock-operating.md\n");
     out.push_str("#\n");
@@ -123,8 +119,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
     ));
     out.push('\n');
 
-    // The graph body: the complete compiled TriG. This is what agents read
-    // and traverse; it is the file.
+    // The resident TriG projection: what agents read and traverse.
     out.push_str(trig_body);
     out
 }

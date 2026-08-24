@@ -1,0 +1,13 @@
+"@context": "https://yeetz.dev/bedrock/context/v1"
+"@id": "https://yeetz.dev/bedrock/vertex/plan-draft"
+"@type": "https://yeetz.dev/bedrock/ontology/Plan"
+label: "Cold draft"
+intent: "Remain valid source without entering the resident graph."
+acceptanceCriteria:
+  - "The draft remains cold."
+consumes:
+  - "https://yeetz.dev/bedrock/path/situation/plan"
+tasks:
+  - "Wait until explicitly activated."
+disposition:
+  state: draft

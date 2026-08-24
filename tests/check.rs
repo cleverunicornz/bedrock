@@ -1,5 +1,5 @@
-//! Both-polarity rule tests for C1–C7 (SPINE §4), each proving the failing
-//! and passing fixtures for the rule, plus init/adopt behavior tests.
+//! Both-polarity contract tests for source validation, resident projection,
+//! generated artifact behavior, and init/adopt/update.
 
 use bedrock::compile;
 
@@ -94,6 +94,21 @@ fn c4_schema_polarity() {
 }
 
 #[test]
+fn plan_lifecycle_state_is_required() {
+    let s = materialize("C1/good");
+    let path = s.path().join("situation/plan/plan-a.yamlld");
+    let text = std::fs::read_to_string(&path).unwrap();
+    let changed = text.replace("disposition:\n  state: active\n", "");
+    assert_ne!(changed, text);
+    std::fs::write(path, changed).unwrap();
+    let combined = check_fails_with(&s, "C4");
+    assert!(
+        combined.contains("disposition") && combined.contains("required"),
+        "Plan lifecycle failure is explicit: {combined}"
+    );
+}
+
+#[test]
 fn c5_edge_resolution_polarity() {
     let good = materialize("C5/good");
     build_and_check_ok(&good);
@@ -130,7 +145,7 @@ fn c1_drift_polarity() {
         "drift named as C1 on AGENTS.md: {combined}"
     );
     assert!(
-        combined.contains("root AGENTS.md (the compiled graph) is out of date or hand-edited"),
+        combined.contains("root AGENTS.md (the resident projection) is out of date or hand-edited"),
         "drift message present: {combined}"
     );
 }
@@ -210,13 +225,17 @@ fn c9_base_type_polarity() {
 
 #[test]
 fn decision_record_and_supersedes_chain_pass() {
-    // Good (0.3.0): two record/ Decision vertices — the second carries
-    // `supersedes` pointing at the first's @id, proving the new edge
-    // resolves under C5. One vertex spells @type as a scalar, the other as
-    // an array with a repo archetype riding alongside (C9). Neither carries
-    // disposition/witnesses — C8 gates Plan and ReflectVerdict only.
+    // Decisions are the resident record class: both vertices and their
+    // supersedes edge must survive projection.
     let good = materialize("C5/supersedes-chain");
     build_and_check_ok(&good);
+    let md = std::fs::read_to_string(good.path().join("AGENTS.md")).unwrap();
+    assert!(
+        md.contains("decision-posix-only")
+            && md.contains("decision-windows-revisited")
+            && md.contains("bedrock:supersedes"),
+        "Decision chain stays resident: {md}"
+    );
 }
 
 #[test]
@@ -307,6 +326,43 @@ fn c10_digest_skew_polarity() {
 }
 
 #[test]
+fn c11_resident_projection_closure_polarity() {
+    let good = materialize("C11/good");
+    build_and_check_ok(&good);
+    let (_, out, _) = run(&["check", good.path().to_str().unwrap()], &manifest());
+    assert!(
+        out.contains("plans 1 active resident; 1 draft"),
+        "projection report exposes active/cold lifecycle: {out}"
+    );
+
+    let bad = materialize("C11/bad");
+    let combined = check_fails_with(&bad, "C11");
+    assert!(
+        combined.contains("resident vertex")
+            && combined.contains("cold vertex")
+            && combined.contains("repo-path pointer"),
+        "C11 names the boundary and fix: {combined}"
+    );
+}
+
+#[test]
+fn closed_plan_and_reflect_record_are_cold() {
+    let s = materialize("C8/good");
+    build_and_check_ok(&s);
+    let md = std::fs::read_to_string(s.path().join("AGENTS.md")).unwrap();
+    assert!(
+        !md.contains("plan-done") && !md.contains("verdict-witnessed"),
+        "done Plan and ReflectVerdict must not occupy resident context: {md}"
+    );
+    let (_, out, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
+    assert!(
+        out.contains("plans 0 active resident; 0 draft / 1 done")
+            && out.contains("records 0 decisions resident / 1 episodic cold"),
+        "report makes cold history visible without injecting it: {out}"
+    );
+}
+
+#[test]
 fn build_emits_only_agents_md() {
     // 0.4.0: ONE artifact. Build writes the root AGENTS.md and nothing
     // else — no situation/graph.trig, no situation/plan/*.trig — and a
@@ -338,7 +394,7 @@ fn build_emits_only_agents_md() {
     let combined = format!("{out}\n{err}");
     assert_eq!(c, 0, "build must clean legacy artifacts:\n{combined}");
     assert!(
-        out.contains("bedrock build: AGENTS.md (the compiled graph) up to date"),
+        out.contains("bedrock build: AGENTS.md (the resident projection) up to date"),
         "build stdout names the single artifact: {out}"
     );
     assert!(
@@ -373,9 +429,9 @@ fn commit_idempotence_deterministic_regenerate() {
 
 #[test]
 fn agents_md_compiled_graph_content() {
-    // 0.4.0: ONE artifact — the root AGENTS.md IS the compiled graph: a
-    // `#`-comment preamble (so the whole file stays valid TriG) followed
-    // by the complete TriG body. No prose projection sections.
+    // ONE artifact: root AGENTS.md IS the resident situation graph. The
+    // preamble stays valid TriG comments; the body is the deterministic
+    // current working-set projection, never the execution archive.
     let s = materialize("C1/good");
     build_and_check_ok(&s);
     let md = std::fs::read_to_string(s.path().join("AGENTS.md")).unwrap();
@@ -406,8 +462,8 @@ fn agents_md_compiled_graph_content() {
     // How-to-read block + title: the repo dir name (this fixture declares
     // no identity vertex).
     assert!(
-        preamble.contains("This file IS the situation graph"),
-        "how-to-read names the file itself: {preamble}"
+        preamble.contains("This file IS the resident situation graph"),
+        "how-to-read names the resident projection: {preamble}"
     );
     let repo_name = s
         .path()
@@ -466,9 +522,8 @@ fn agents_md_compiled_graph_content() {
         "digest marker names regeneration: {line}"
     );
 
-    // The body: the complete TriG — the fixed @prefix prelude, the named
-    // namespace graphs, and the compiler-emitted document edge pointing
-    // each vertex at its own source file.
+    // The body: resident TriG — fixed prefixes, resident named graphs, and
+    // compiler-emitted document edges.
     for p in [
         "@prefix rdf: ",
         "@prefix xsd: ",
@@ -489,6 +544,22 @@ fn agents_md_compiled_graph_content() {
         body.contains("bedrock:document bedrock:path\\/situation\\/plan\\/plan-a.yamlld"),
         "plan vertex carries its document edge: {body}"
     );
+    assert!(
+        body.contains("bedrock:state \"active\""),
+        "active Plan exposes its lifecycle state: {body}"
+    );
+    for cold in [
+        "bedrock:acceptance-criteria",
+        "bedrock:tasks",
+        "bedrock:witnesses",
+        "bedrock:reflect-depth",
+        "bedrock:disposition",
+    ] {
+        assert!(
+            !body.contains(cold),
+            "active Plan payload `{cold}` stays cold: {body}"
+        );
+    }
     assert!(
         md.contains("A fixture invariant that must compile clean."),
         "the graph embeds vertex statements: {md}"
@@ -592,6 +663,61 @@ fn body_never_compiles_into_the_graph() {
 }
 
 #[test]
+fn active_plan_payload_edit_changes_no_artifact_bytes() {
+    let s = materialize("C1/good");
+    build_and_check_ok(&s);
+    let agents = s.path().join("AGENTS.md");
+    let before = std::fs::read(&agents).unwrap();
+    let plan = s.path().join("situation/plan/plan-a.yamlld");
+    let text = std::fs::read_to_string(&plan).unwrap();
+    let changed = text.replace(
+        "Run bedrock build.",
+        "Run bedrock build, then retain the execution witness.",
+    );
+    assert_ne!(changed, text);
+    std::fs::write(plan, changed).unwrap();
+
+    let (code, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(
+        code, 0,
+        "cold active-Plan payload remains valid:\n{out}\n{err}"
+    );
+    let after = std::fs::read(&agents).unwrap();
+    assert_eq!(
+        before, after,
+        "changing only active-Plan tasks changes no resident bytes"
+    );
+}
+
+#[test]
+fn yamlld_reference_is_validated_but_cold() {
+    let s = materialize("C1/good");
+    build_and_check_ok(&s);
+    let agents = s.path().join("AGENTS.md");
+    let before = std::fs::read(&agents).unwrap();
+    std::fs::write(
+        s.path().join("situation/references/cold-term.yamlld"),
+        "\"@context\": \"https://yeetz.dev/bedrock/context/v1\"\n\
+         \"@id\": \"https://yeetz.dev/bedrock/vertex/cold-reference-term\"\n\
+         \"@type\": \"https://yeetz.dev/bedrock/ontology/Term\"\n\
+         label: \"Cold reference term\"\n\
+         statement: \"Valid source that is read only through the disclosed references path.\"\n",
+    )
+    .unwrap();
+    let (code, out, err) = run(&["build", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(code, 0, "cold YAML-LD reference validates:\n{out}\n{err}");
+    assert!(
+        out.contains("references 1 YAML-LD cold"),
+        "report counts cold references: {out}"
+    );
+    let after = std::fs::read(&agents).unwrap();
+    assert_eq!(
+        before, after,
+        "adding a cold YAML-LD reference changes no resident bytes"
+    );
+}
+
+#[test]
 fn body_must_be_a_string_fails_c4() {
     // Bad polarity: a non-string body is a schema violation (C4), loudly.
     let s = materialize("C1/good");
@@ -622,8 +748,8 @@ fn size_report_soft_budget_polarity() {
         "check prints the size report: {out}"
     );
     assert!(
-        out.contains("0 compiled face(s) over the 4096-char soft budget"),
-        "small faces stay under budget: {out}"
+        out.contains("0 face(s) over the 4096-char soft budget"),
+        "small resident faces stay under budget: {out}"
     );
     assert!(!out.contains("SOFT "), "no SOFT lines under budget: {out}");
 
@@ -643,17 +769,17 @@ fn size_report_soft_budget_polarity() {
         "an over-budget face NEVER fails build:\n{out2}\n{err2}"
     );
     assert!(
-        out2.contains("1 compiled face(s) over the 4096-char soft budget"),
-        "report counts the oversized face: {out2}"
+        out2.contains("1 face(s) over the 4096-char soft budget"),
+        "report counts the oversized resident face: {out2}"
     );
     assert!(
-        out2.contains("SOFT situation/definition/big-face.yamlld:1"),
+        out2.contains("SOFT situation/definition/big-face.yamlld:1 resident face"),
         "SOFT line names the file: {out2}"
     );
     let (c3, out3, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
     assert_eq!(c3, 0, "an over-budget face NEVER fails check:\n{out3}");
     assert!(
-        out3.contains("SOFT situation/definition/big-face.yamlld:1"),
+        out3.contains("SOFT situation/definition/big-face.yamlld:1 resident face"),
         "check repeats the SOFT line: {out3}"
     );
 }

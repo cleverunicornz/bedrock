@@ -11,21 +11,19 @@ root `AGENTS.md`, ran `check`, and it passed. Go in order.
 - The operating reference — `situation/references/bedrock-operating.md`, the
   base protocol: the CHAIN (promise, oracle, witness, residual), the ontology,
   every rule. Read it before writing your first vertex.
-- Root `AGENTS.md`, compiled from the graph. Read it first. It is law; never
-  hand-edit it.
+- Root `AGENTS.md`, the resident situation graph. Read it first; never
+  hand-edit it. Complete source and cold history stay under `situation/`.
 
 ## 2. The six namespaces
 
 Vertices live flat in their namespace: `situation/<ns>/<local-name>.yamlld`.
 
-- `definition/` — invariants and terms: law agents must not break.
-- `architecture/` — what this repo is and intends; the vertex marked
-  `role: identity` names the repo in AGENTS.md.
-- `risk/` — present-tense warnings; delete the vertex when the risk retires.
-- `plan/` — execution graphs, the plans of record for each branch.
-- `record/` — epoch records, deploy placements, reflect verdicts, decisions.
-- `references/` — depth documents; the only namespace that may nest and hold
-  non-YAML-LD files (markdown).
+- `definition/` — resident invariants, breadcrumbs, terms.
+- `architecture/` — resident current structure and intent.
+- `risk/` — resident present-tense warnings; delete when retired.
+- `plan/` — complete Plans; only active compact routing faces are resident.
+- `record/` — Decisions resident; epoch/deploy/reflect records cold.
+- `references/` — cold shared depth; may nest and hold markdown.
 
 No new top-level directories under `situation/`.
 
@@ -46,20 +44,19 @@ it by hand; delete any other copy. This law is non-negotiable.
 
 ## 5. Add a vertex
 
-1. Write `situation/<ns>/<local-name>.yamlld`: the face on top — `@id`,
-   `@type`, `label` or a one-line description, typed edges, a `statement`
-   that says when to read on — and depth in `body: |` below. The face
-   compiles into the graph (keep it 500–1000 tokens); the body never does.
-2. Run `bedrock build`. It re-checks, compiles YAML-LD into the root
-   `AGENTS.md` — the complete deterministic TriG graph — and prints the
-   size report (SOFT lines flag faces over 4096 chars; advisory only).
-3. If check fails: one violation per line, `RULE path:line message`. Fix the
-   cause — `build` refuses to proceed while check is red.
+1. Write `situation/<ns>/<local-name>.yamlld`: compact routing face on top,
+   node-local depth in `body: |`.
+2. Every Plan declares `disposition.state`: draft|active|done|abandoned.
+   Only active projects a routing face; all execution payload stays cold.
+3. Run `bedrock build`. It validates the complete situation, emits the
+   resident TriG into root AGENTS.md, and reports resident/cold counts plus
+   advisory SOFT face budgets.
+4. Fix each hard `RULE path:line message`; build refuses while red.
 
 ## 6. Commit and PR
 
-Commit the vertices and the regenerated root `AGENTS.md` (the compiled graph);
-open a pull request. A human merges; you do not merge your own work.
+Commit source and regenerated AGENTS.md (the resident projection); open a
+pull request. A human merges; you do not merge your own work.
 
 Summary: skeleton, floor, workflow hook, and root AGENTS.md are live. Add
 law as vertices, run `bedrock build`, then PR for a human merge.
