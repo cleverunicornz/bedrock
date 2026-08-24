@@ -55,6 +55,12 @@ fn init_seeds_new_repo_and_passes_check() {
         "epoch record carries commit+version: {text}"
     );
     assert!(text.contains("statement:"), "{text}");
+    assert!(
+        text.contains("\"@context\": \"urn:bedrock:context/v1\"")
+            && text.contains("\"@id\": \"urn:bedrock:vertex/")
+            && text.contains("\"@type\": \"urn:bedrock:ontology/EpochRecord\""),
+        "new epoch authoring is canonical URN only: {text}"
+    );
     // Compiled artifact: exactly one — the root AGENTS.md; init never
     // writes the legacy situation/graph.trig.
     assert!(s.path().join("AGENTS.md").exists());
@@ -68,6 +74,10 @@ fn init_seeds_new_repo_and_passes_check() {
             .join("situation/references/bedrock-operating.md")
             .exists(),
         "operating reference installed by init"
+    );
+    assert!(
+        s.path().join("seed/substrate-lock.json").is_file(),
+        "substrate lock installed"
     );
     // Instruction set emitted (W4 placeholders are wired via include_str!).
     assert!(
@@ -108,6 +118,11 @@ fn init_stamps_machine_owned_provenance() {
     assert!(
         schema.contains(&format!("\"$comment\": \"{stamp}")),
         "schema carries the $comment stamp: {schema}"
+    );
+    let lock = std::fs::read_to_string(s.path().join("seed/substrate-lock.json")).unwrap();
+    assert!(
+        lock.contains(&format!("\"$comment\": \"{stamp}")) && lock.contains("\"ref\": \"0.7.0\""),
+        "lock carries provenance and exact checker ref: {lock}"
     );
     // Floor vertices get the light `# seeded by bedrock vX` note only (repos
     // own their situation — never a do-not-edit).
@@ -233,6 +248,16 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
         "the compiled graph lives in AGENTS.md — no separate artifact"
     );
     assert!(s.path().join("AGENTS.md").exists());
+    let lock = std::fs::read_to_string(s.path().join("seed/substrate-lock.json")).unwrap();
+    assert!(
+        lock.contains("\"package\": \"yeetz-bedrock\"") && lock.contains("\"ref\": \"0.7.0\""),
+        "embedded seed installs exact substrate lock: {lock}"
+    );
+    let workflow = std::fs::read_to_string(s.path().join(".github/workflows/bedrock.yml")).unwrap();
+    assert!(
+        workflow.contains("seed/substrate-lock.json") && !workflow.contains("latest from source"),
+        "workflow resolves the checker only from the lock: {workflow}"
+    );
 
     // End-to-end: the seeded repo passes a full check with no seed env.
     let out2 = Command::new(bedrock_exe())
@@ -347,6 +372,7 @@ fn update_refreshes_skewed_installed_base_files() {
         "situation/references/bedrock-operating.md",
         "\nstale marker\n",
     );
+    rewrite_append("seed/substrate-lock.json", "\n");
 
     // check must fail with C10 naming `bedrock update`.
     let (c2, out2, err2) = run(&["check", s.path().to_str().unwrap()], &manifest());
@@ -370,6 +396,7 @@ fn update_refreshes_skewed_installed_base_files() {
     assert!(
         out3.contains("seed/schemas/plan.json")
             && out3.contains("seed/context.yamlld")
+            && out3.contains("seed/substrate-lock.json")
             && out3.contains("bedrock-operating.md"),
         "update prints exactly what changed: {out3}"
     );
@@ -382,6 +409,9 @@ fn update_refreshes_skewed_installed_base_files() {
     let installed_op =
         std::fs::read(s.path().join("situation/references/bedrock-operating.md")).unwrap();
     assert_eq!(embedded_op, installed_op, "operating reference restored");
+    let embedded_lock = std::fs::read(manifest().join("seed/substrate-lock.json")).unwrap();
+    let installed_lock = std::fs::read(s.path().join("seed/substrate-lock.json")).unwrap();
+    assert_eq!(embedded_lock, installed_lock, "substrate lock restored");
 
     // check passes again.
     let (c4, out4, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
@@ -419,7 +449,7 @@ fn version_gate_current_proceeds_and_other_commands_ignore_lookup() {
     assert_eq!(code, 0, "current version must proceed:\n{out}\n{err}");
     assert!(!out.contains("Upgrade with"), "{out}");
 
-    for command in ["check", "build", "update"] {
+    for command in ["check", "build", "update", "migrate-iris"] {
         let (code, out, err) = run_gate(
             &[command, s.path().to_str().unwrap()],
             &manifest(),
@@ -463,6 +493,20 @@ fn version_gate_semver_treats_stable_as_newer_than_same_prerelease() {
     );
     assert_eq!(code, 0, "local stable must proceed:\n{out}\n{err}");
     assert!(out.contains("newer than crates.io"), "{out}");
+}
+
+#[test]
+fn version_gate_070_clears_published_061() {
+    assert_eq!(env!("CARGO_PKG_VERSION"), "0.7.0");
+    let s = Scratch::new("gate-070-over-061");
+    let response = version_json("0.6.1");
+    let (code, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        &response,
+    );
+    assert_eq!(code, 0, "0.7.0 must clear the 0.6.1 gate:\n{out}\n{err}");
+    assert!(out.contains("running v0.7.0, newer than crates.io v0.6.1"));
 }
 
 #[test]
@@ -581,6 +625,7 @@ fn check_help_and_version_contracts() {
                 && out.contains("check")
                 && out.contains("build")
                 && out.contains("update")
+                && out.contains("migrate-iris")
         );
     }
     let (c, out, _) = run(&["--version"], s.path());
@@ -590,10 +635,8 @@ fn check_help_and_version_contracts() {
 
 #[test]
 fn init_accepts_w3_skeleton_layout() {
-    // W3's real seed ships `situation-skeleton/` (empty .gitkeep dirs) and
-    // `workflow/bedrock.yml`. init must install from that layout: skeleton +
-    // workflow promoted to .github/workflows/, gitignore stanza appended,
-    // schemas/context preserved for the consumer's check.
+    // The installable seed includes skeleton, workflow, schemas/context, and
+    // substrate lock. init must promote workflow and preserve checker inputs.
     let seed_copy = Scratch::new("seed-w3");
     for ns in [
         "definition",
@@ -615,6 +658,11 @@ fn init_accepts_w3_skeleton_layout() {
         &fixture_seed().join("schemas"),
         &seed_copy.dir.join("seed/schemas"),
     );
+    std::fs::copy(
+        fixture_seed().join("substrate-lock.json"),
+        seed_copy.dir.join("seed/substrate-lock.json"),
+    )
+    .unwrap();
     std::fs::write(
         seed_copy.dir.join("seed/workflow/bedrock.yml"),
         "name: bedrock\non: [push]\n",
@@ -662,8 +710,9 @@ fn init_accepts_w3_skeleton_layout() {
         gi.contains("commit situation/"),
         "gitignore stanza appended: {gi}"
     );
-    // schemas/context kept for the consumer's check.
+    // schemas/context/lock kept for the consumer's check.
     assert!(s.path().join("seed/schemas/definition.json").exists());
+    assert!(s.path().join("seed/substrate-lock.json").exists());
     // Skeleton-only repo compiles: no vertices, but check passes and
     // AGENTS.md still renders (identity/invariants empty).
     let (c, out, _) = run(&["check", s.path().to_str().unwrap()], &manifest());

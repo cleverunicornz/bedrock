@@ -28,13 +28,14 @@ this repo still relies on — never by sweep.
 Delete every `AGENTS.md` outside the root that was listed, once its law is
 in vertices. Only root `AGENTS.md` remains — the one-AGENTS.md law.
 
-## 4. The six namespaces
+## 4. Six base namespaces plus registered opaque mounts
 
-Vertices are flat under six namespaces. definition/architecture/current
-risk and Decisions are resident; only active Plan routing faces are
-resident. Draft/done/abandoned Plans, epoch/deploy/reflect records, bodies,
-and references are cold but fully validated and path-discoverable. Only
-references/ may nest and hold markdown.
+Base vertices are flat under six namespaces. Definition, architecture,
+current risk, Decisions, ExpansionMount registrations, and active Plan
+routing faces are resident. Other Plans, episodic records, bodies, and
+references are cold but validated. Only references may nest. No other direct
+child is legal unless a complete ExpansionMount registration claims it; a
+mount remains opaque and is not a seventh namespace.
 
 ## 5. The five work verbs
 

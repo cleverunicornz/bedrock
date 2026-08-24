@@ -1,21 +1,21 @@
-# The canonical situation store: six namespaces, their residency semantics,
-# and path edges that let an agent discover cold source without enumerating
-# it in the injected graph.
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/situation-structure"
-"@type": "https://yeetz.dev/bedrock/ontology/SituationStructure"
+# The canonical store: six base namespaces plus registered opaque mounts,
+# residency semantics, and path edges for discovering cold base source.
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/situation-structure"
+"@type": "urn:bedrock:ontology/SituationStructure"
 label: "The situation structure"
 statement: >
   situation/ is the repo's canonical law, current knowledge, and episodic
-  history: six namespaces whose complete YAML-LD source bedrock validates.
-  AGENTS.md is its resident projection — definition, architecture, current
-  risks, Decisions, and compact routing faces for active Plans. Draft,
-  completed, and abandoned Plans plus episodic records stay cold under these
-  disclosed paths until a task requires them.
+  history: six base namespaces plus registered opaque mounts. Bedrock
+  validates every base source and only the mount boundary. AGENTS.md is the
+  resident projection — definition, architecture, current risks, Decisions,
+  mount registrations/linkage, and active Plan routing faces. Other Plans,
+  episodic records, mount graph content, references, and bodies stay cold
+  until a task follows a disclosed path.
 path:
-  - "https://yeetz.dev/bedrock/path/situation/definition"
-  - "https://yeetz.dev/bedrock/path/situation/architecture"
-  - "https://yeetz.dev/bedrock/path/situation/risk"
-  - "https://yeetz.dev/bedrock/path/situation/plan"
-  - "https://yeetz.dev/bedrock/path/situation/record"
-  - "https://yeetz.dev/bedrock/path/situation/references"
+  - "urn:bedrock:path/situation/definition"
+  - "urn:bedrock:path/situation/architecture"
+  - "urn:bedrock:path/situation/risk"
+  - "urn:bedrock:path/situation/plan"
+  - "urn:bedrock:path/situation/record"
+  - "urn:bedrock:path/situation/references"

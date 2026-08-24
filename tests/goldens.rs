@@ -124,3 +124,17 @@ fn empty_document_fails_profile() {
     }
     assert!(!vs.is_empty(), "empty file must produce a violation");
 }
+
+#[test]
+fn trig_prefix_iris_are_canonical_and_pairwise_length_distinct() {
+    let prefixes = bedrock::contextreg::PREFIXES;
+    let lengths: std::collections::BTreeSet<usize> =
+        prefixes.iter().map(|(_, iri)| iri.len()).collect();
+    assert_eq!(
+        lengths.len(),
+        prefixes.len(),
+        "oxttl's equal-length prefix tie break would make bytes unstable"
+    );
+    assert!(prefixes.contains(&("bedrock", "urn:bedrock:")));
+    assert!(prefixes.contains(&("graph", "urn:bedrock:graph/")));
+}

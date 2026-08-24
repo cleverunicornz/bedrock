@@ -1,13 +1,13 @@
 # Decision record: resident projection contract, 0.6.0.
 # The statement is the resident collapse; body carries implementation rationale.
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/decision-resident-working-set"
-"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/decision-resident-working-set"
+"@type": "urn:bedrock:ontology/Decision"
 label: "AGENTS.md is a resident working set, not the situation archive"
 references:
-  - "https://yeetz.dev/bedrock/vertex/invariant-16-agents-md-register"
-  - "https://yeetz.dev/bedrock/vertex/invariant-01-possibility-space"
-  - "https://yeetz.dev/bedrock/vertex/decision-vertex-face-body"
+  - "urn:bedrock:vertex/invariant-16-agents-md-register"
+  - "urn:bedrock:vertex/invariant-01-possibility-space"
+  - "urn:bedrock:vertex/decision-vertex-face-body"
 statement: >
   Chose the 0.6.0 resident-projection contract: situation/ is the complete
   canonical store and every YAML-LD source validates, while AGENTS.md carries

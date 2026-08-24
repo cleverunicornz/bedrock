@@ -1,4 +1,4 @@
-//! Hand-rolled CLI over `bedrock`'s five verbs. Deps stay minimal (no clap).
+//! Hand-rolled CLI. Dependencies stay minimal (no clap).
 
 use crate::errors::Fatal;
 use std::path::PathBuf;
@@ -12,15 +12,17 @@ Usage:
                                      print the init instruction set.
   bedrock adopt  [--offline] [DIR]   epoch-change an EXISTING repo: same install, plus an epoch
                                      record vertex declaring the cut line.
-  bedrock check  [DIR]               validate situation/ (C1–C11); CI entrypoint. Prints exact artifact
+  bedrock check  [DIR]               validate situation/ (C1–C12); CI entrypoint. Prints exact artifact
                                      bytes, source/resident counts, Plan lifecycle and record residency,
                                      plus advisory SOFT resident faces over 4096 chars. Exit 1 with one
                                      `RULE path:line message` per violation.
   bedrock build  [DIR]               check, then compile root AGENTS.md — the resident TriG working-set
                                      projection — and print the report. Fails if check fails.
-  bedrock update [DIR]               refresh the installed base files (schemas, context, operating
-                                     reference, missing workflow template) from this binary's embedded
-                                     copies; print exactly what changed; then run check + build.
+  bedrock update [DIR]               refresh Bedrock-owned schemas, context, operating reference,
+                                     substrate lock, and a missing workflow; never rewrite authored
+                                     vertices, mounts, or an existing workflow; then check + build.
+  bedrock migrate-iris [DIR]         explicitly rewrite legacy Bedrock IRIs in base-namespace
+                                     YAML-LD, never mount contents, then regenerate AGENTS.md.
   bedrock help                       this contract, short.
   bedrock --version / -V             print version.
 
@@ -29,7 +31,7 @@ Flags:
                 `offline: true` are still stamped into the epoch record.
   DIR           repo root; defaults to the current directory.
 
-init/adopt refuse stale or unverifiable binaries; check/build/update never use the network (SPINE §1).
+init/adopt refuse stale or unverifiable binaries; check/build/update/migrate-iris never use the network (SPINE §1).
 ";
 
 pub enum Command {
@@ -38,6 +40,7 @@ pub enum Command {
     Check { dir: PathBuf },
     Build { dir: PathBuf },
     Update { dir: PathBuf },
+    MigrateIris { dir: PathBuf },
     Help,
     Version,
 }
@@ -81,6 +84,7 @@ pub fn parse(args: &[String]) -> Result<Command, Fatal> {
         Some("check") => Ok(Command::Check { dir }),
         Some("build") => Ok(Command::Build { dir }),
         Some("update") => Ok(Command::Update { dir }),
+        Some("migrate-iris") => Ok(Command::MigrateIris { dir }),
         Some("help") => Ok(Command::Help),
         Some(other) => Err(Fatal(format!(
             "unknown command `{other}`; try `bedrock help`"
@@ -127,6 +131,10 @@ pub fn run(cmd: Command) -> Result<i32, Fatal> {
         }
         Command::Update { dir } => {
             crate::install::update(&dir)?;
+            Ok(0)
+        }
+        Command::MigrateIris { dir } => {
+            crate::install::migrate_iris(&dir)?;
             Ok(0)
         }
     }

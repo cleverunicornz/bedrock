@@ -230,11 +230,13 @@ fn decision_record_and_supersedes_chain_pass() {
     let good = materialize("C5/supersedes-chain");
     build_and_check_ok(&good);
     let md = std::fs::read_to_string(good.path().join("AGENTS.md")).unwrap();
+    let body = md.split_once("\n\n").expect("artifact has TriG body").1;
     assert!(
-        md.contains("decision-posix-only")
-            && md.contains("decision-windows-revisited")
-            && md.contains("bedrock:supersedes"),
-        "Decision chain stays resident: {md}"
+        body.contains("decision-posix-only")
+            && body.contains("decision-windows-revisited")
+            && (body.contains("bedrock:supersedes")
+                || body.contains("<https://yeetz.dev/bedrock/supersedes>")),
+        "Decision chain stays resident across the identity bridge: {md}"
     );
 }
 
@@ -303,9 +305,13 @@ fn c10_digest_skew_polarity() {
         schema.contains("\"$comment\": \"Installed by bedrock v"),
         "schema carries the $comment stamp: {schema}"
     );
+    let lock = std::fs::read_to_string(good.path().join("seed/substrate-lock.json")).unwrap();
+    assert!(
+        lock.contains("\"checker\"") && lock.contains("\"ref\": \"0.7.0\""),
+        "substrate lock carries the exact checker ref: {lock}"
+    );
 
-    // Bad: a stale-version stamp (v0.2.0 against this v{} binary) plus
-    // appended tamper on a schema, the context, and the operating reference.
+    // Bad: stale-version stamps and lock ref across every C10-owned class.
     let bad = materialize("C10/bad");
     let combined = check_fails_with(&bad, "C10");
     assert!(
@@ -320,6 +326,7 @@ fn c10_digest_skew_polarity() {
     assert!(
         combined.contains("seed/schemas/plan.json")
             && combined.contains("seed/context.yamlld")
+            && combined.contains("seed/substrate-lock.json")
             && combined.contains("bedrock-operating.md"),
         "skewed files named: {combined}"
     );

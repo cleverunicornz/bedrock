@@ -12,6 +12,7 @@
 //! - C9 every source carries a base type
 //! - C10 installed base-file digest skew
 //! - C11 resident projection closes over vertex edges
+//! - C12 registered opaque mount boundary
 
 use crate::compile;
 use crate::contextreg::{ContextRegistry, GRAPH_NAMESPACES, NAMESPACES, OPERATING_REF_PATH};
@@ -63,19 +64,17 @@ pub struct Face {
 /// failing — the target band is 500–1000 tokens.
 pub const SOFT_FACE_BUDGET_CHARS: usize = 4096;
 
-const DOCUMENT_PREDICATE: &str = "https://yeetz.dev/bedrock/document";
-const STATE_PREDICATE: &str = "https://yeetz.dev/bedrock/state";
-const PLAN_ROUTING_FIELDS: [(&str, &str); 10] = [
-    ("label", "https://yeetz.dev/bedrock/label"),
-    ("intent", "https://yeetz.dev/bedrock/intent"),
-    ("consumes", "https://yeetz.dev/bedrock/consumes"),
-    ("requires", "https://yeetz.dev/bedrock/requires"),
-    ("references", "https://yeetz.dev/bedrock/references"),
-    ("produces", "https://yeetz.dev/bedrock/produces"),
-    ("member-of", "https://yeetz.dev/bedrock/member-of"),
-    ("oracle", "https://yeetz.dev/bedrock/oracle"),
-    ("source", "https://yeetz.dev/bedrock/source"),
-    ("path", "https://yeetz.dev/bedrock/path"),
+const PLAN_ROUTING_FIELDS: [&str; 10] = [
+    "label",
+    "intent",
+    "consumes",
+    "requires",
+    "references",
+    "produces",
+    "member-of",
+    "oracle",
+    "source",
+    "path",
 ];
 
 /// The set of source yamlld files under situation/ with their namespace.
@@ -106,9 +105,12 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
     let registry = ContextRegistry::load(Some(&seed))?;
     let schemas = SchemaRegistry::load(Some(&seed))?;
 
-    // ---------- C1: file placement ----------
-    let sources = scan_situation(root, &mut out);
-    scan_agents_md(root, &mut out);
+    // Registrations are discovered before C1 judges unknown situation roots.
+    let mount_candidates = crate::mount::discover(root);
+    let mount_names = crate::mount::exclusion_names(&mount_candidates);
+    let sources = scan_situation(root, &mount_names, &mut out);
+    scan_agents_md(root, &mount_names, &mut out);
+    let registrations = crate::mount::validate(root, &mount_candidates, &mut out);
 
     // Source quads are the validation dataset. Resident quads are the
     // deterministic working-set projection injected into every agent.
@@ -135,6 +137,16 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
                 Ok(mut quads) => {
                     // C4
                     out.extend(schemas.validate(ns_name, value, &rel(&f.rel), &f.text));
+                    // C5 mounted-path subject shape; ordinary edge resolution
+                    // remains the full-source pass below.
+                    out.extend(c5_reflect_subject(
+                        ns_name,
+                        value,
+                        &rel(&f.rel),
+                        &f.text,
+                        root,
+                        &registrations,
+                    ));
                     // C8 witness gate (plan + record namespace)
                     out.extend(c8_witness_gate(ns_name, value, &rel(&f.rel), &f.text));
                     // C9 base-type intersection
@@ -165,6 +177,10 @@ pub fn collect(root: &Path) -> Result<(Vec<Violation>, Option<Compiled>), Fatal>
     // ---------- C5: full-source edge resolution ----------
     let source_vertex_ids = vertex_ids(&source_quads);
     check_edges(&source_quads, &source_vertex_ids, root, &mut out);
+
+    // Generated pointer linkage is resident Bedrock metadata. Mount graph
+    // content is never included in source or resident datasets.
+    resident_quads.extend(crate::mount::linkage_quads(&registrations));
 
     // ---------- C11: resident projection integrity ----------
     let resident_vertex_ids = vertex_ids(&resident_quads);
@@ -246,7 +262,11 @@ pub fn resolve_seed(root: &Path) -> Result<PathBuf, Fatal> {
 }
 
 /// C1 placement: walk situation/ per §3.
-fn scan_situation(root: &Path, out: &mut Vec<Violation>) -> Vec<SourceFile> {
+fn scan_situation(
+    root: &Path,
+    mount_names: &BTreeSet<String>,
+    out: &mut Vec<Violation>,
+) -> Vec<SourceFile> {
     let sit = root.join("situation");
     let mut sources = Vec::new();
     let Ok(entries) = std::fs::read_dir(&sit) else {
@@ -270,12 +290,14 @@ fn scan_situation(root: &Path, out: &mut Vec<Violation>) -> Vec<SourceFile> {
         if p.is_dir() {
             if NAMESPACES.contains(&name) {
                 scan_namespace(root, &p, out, &mut sources);
+            } else if mount_names.contains(name) {
+                // Registered opaque exclusion. C12 owns its narrow traversal.
             } else {
                 out.push(Violation::new(
                     "C1",
                     format!("situation/{name}"),
                     1,
-                    format!("only the six Situation namespaces are allowed (definition|architecture|risk|plan|record|references), got directory `{name}`"),
+                    format!("only the six base namespaces plus registered opaque mounts are allowed, got unregistered directory `{name}`"),
                 ));
             }
         } else if name == "graph.trig" {
@@ -293,7 +315,7 @@ fn scan_situation(root: &Path, out: &mut Vec<Violation>) -> Vec<SourceFile> {
                 "C1",
                 format!("situation/{name}"),
                 1,
-                "unexpected file directly under situation/; only the six namespace directories live here"
+                "unexpected file directly under situation/; only the six base namespace directories live here"
                     .to_string(),
             ));
         }
@@ -414,10 +436,12 @@ fn add_document_quad(value: &Value, quads: &mut Vec<Quad>, source: &Path) {
         subject: NamedOrBlankNode::NamedNode(
             oxrdf::NamedNode::new(id).expect("schema requires an absolute vertex @id"),
         ),
-        predicate: oxrdf::NamedNode::new(DOCUMENT_PREDICATE).expect("static IRI"),
+        predicate: oxrdf::NamedNode::new(crate::contextreg::predicate("document"))
+            .expect("canonical document predicate"),
         object: Term::NamedNode(
             oxrdf::NamedNode::new(format!(
-                "https://yeetz.dev/bedrock/path/{}",
+                "{}{}",
+                crate::contextreg::PATH_PREFIX,
                 source.display()
             ))
             .expect("repo-relative source path is a valid IRI"),
@@ -462,7 +486,10 @@ fn project_resident(
             }
         },
         Some("record") => {
-            if type_iris(value).contains(&crate::contextreg::ontology_type("Decision")) {
+            if type_iris(value)
+                .iter()
+                .any(|iri| crate::contextreg::is_ontology_type(iri, "Decision"))
+            {
                 stats.resident_decisions += 1;
                 Some(quads.to_vec())
             } else {
@@ -486,10 +513,10 @@ fn project_active_plan(value: &Value, quads: &[Quad]) -> Vec<Quad> {
         .iter()
         .filter(|q| {
             q.predicate == oxrdf::vocab::rdf::TYPE
-                || q.predicate.as_str() == DOCUMENT_PREDICATE
+                || crate::contextreg::is_predicate(q.predicate.as_str(), "document")
                 || PLAN_ROUTING_FIELDS
                     .iter()
-                    .any(|(_, iri)| q.predicate.as_str() == *iri)
+                    .any(|field| crate::contextreg::is_predicate(q.predicate.as_str(), field))
         })
         .cloned()
         .collect();
@@ -501,7 +528,8 @@ fn project_active_plan(value: &Value, quads: &[Quad]) -> Vec<Quad> {
             subject: NamedOrBlankNode::NamedNode(
                 oxrdf::NamedNode::new(id).expect("schema requires an absolute vertex @id"),
             ),
-            predicate: oxrdf::NamedNode::new(STATE_PREDICATE).expect("static IRI"),
+            predicate: oxrdf::NamedNode::new(crate::contextreg::predicate("state"))
+                .expect("canonical state predicate"),
             object: Term::Literal(oxrdf::Literal::new_simple_literal("active")),
             graph_name,
         });
@@ -534,10 +562,7 @@ fn projected_face_chars(ns: Option<&str>, value: &Value) -> usize {
         let mut out = serde_json::Map::new();
         let keys = ["@context", "@id", "@type"];
         if let Some(source) = value.as_object() {
-            for key in keys
-                .into_iter()
-                .chain(PLAN_ROUTING_FIELDS.iter().map(|(key, _)| *key))
-            {
+            for key in keys.into_iter().chain(PLAN_ROUTING_FIELDS.iter().copied()) {
                 if let Some(v) = source.get(key) {
                     out.insert(key.to_string(), v.clone());
                 }
@@ -557,9 +582,9 @@ fn projected_face_chars(ns: Option<&str>, value: &Value) -> usize {
         .unwrap_or_default()
 }
 
-/// C1: any AGENTS.md not at the repo root → FAIL; root AGENTS.md must not
-/// drift (drift is checked later, after regeneration, by the caller wiring).
-fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
+/// C1 global AGENTS.md confinement. Registered mount roots are traversed only
+/// by C12, which rejects nested AGENTS.md without exposing other contents.
+fn scan_agents_md(root: &Path, mount_names: &BTreeSet<String>, out: &mut Vec<Violation>) {
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -569,6 +594,11 @@ fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
             let p = e.path();
             let name = e.file_name().to_str().unwrap_or_default().to_string();
             if p.is_dir() {
+                if mount_names.contains(&name)
+                    && p.parent() == Some(root.join("situation").as_path())
+                {
+                    continue;
+                }
                 // do not descend into target/, .git, or quarantined test rigs:
                 // fixtures are rig material (they plant deliberate violations
                 // to test the rules) and never carry repo law.
@@ -593,18 +623,56 @@ fn scan_agents_md(root: &Path, out: &mut Vec<Violation>) {
     }
 }
 
+/// C5: ReflectVerdict subjects may be authored base vertices or existing
+/// paths canonically contained by one registered mount.
+fn c5_reflect_subject(
+    ns: Option<&str>,
+    value: &Value,
+    rel: &str,
+    src: &str,
+    root: &Path,
+    registrations: &[crate::mount::Registration],
+) -> Vec<Violation> {
+    if ns != Some("record")
+        || !type_iris(value)
+            .iter()
+            .any(|iri| crate::contextreg::is_ontology_type(iri, "ReflectVerdict"))
+    {
+        return Vec::new();
+    }
+    let Some(subject) = value.get("subject").and_then(Value::as_str) else {
+        return Vec::new();
+    };
+    let Some(path) = crate::contextreg::path_from_iri(subject) else {
+        return Vec::new();
+    };
+    if crate::mount::contains_registered_path(root, Path::new(path), registrations) {
+        Vec::new()
+    } else {
+        vec![Violation::new(
+            "C5",
+            rel,
+            crate::errors::line_of(src, subject),
+            format!("ReflectVerdict subject path `{path}` is not contained by a registered mount"),
+        )]
+    }
+}
+
 /// C8 (witness gate, base protocol): a Plan or ReflectVerdict whose
 /// `disposition.state` is `done` must carry at least one `witnesses` entry —
 /// no witness, no done. Judged on the parsed vertex so the violation is
 /// line-cited at the `done` (the source schema has already validated shape).
 fn c8_witness_gate(ns: Option<&str>, value: &Value, rel: &str, src: &str) -> Vec<Violation> {
     let gate_type = match ns {
-        Some("plan") => crate::contextreg::ontology_type("Plan"),
-        Some("record") => crate::contextreg::ontology_type("ReflectVerdict"),
+        Some("plan") => "Plan",
+        Some("record") => "ReflectVerdict",
         _ => return Vec::new(),
     };
     let types = type_iris(value);
-    if !types.contains(&gate_type) {
+    if !types
+        .iter()
+        .any(|iri| crate::contextreg::is_ontology_type(iri, gate_type))
+    {
         return Vec::new();
     }
     let Some(state) = value
@@ -642,10 +710,7 @@ fn c9_base_type(value: &Value, rel: &str, src: &str) -> Vec<Violation> {
     if types.is_empty() {
         return Vec::new(); // missing/malformed @type is a C4/schema concern
     }
-    if types
-        .iter()
-        .any(|t| crate::contextreg::BASE_TYPES.contains(&t.as_str()))
-    {
+    if types.iter().any(|iri| crate::contextreg::is_base_type(iri)) {
         return Vec::new();
     }
     let bad = types.first().cloned().unwrap_or_default();
@@ -654,7 +719,7 @@ fn c9_base_type(value: &Value, rel: &str, src: &str) -> Vec<Violation> {
         rel,
         crate::errors::line_of(src, &bad),
         format!(
-            "vertex {bad} carries no base @type — every vertex must carry at least one of (Invariant|Breadcrumb|Term|Identity|SituationStructure|Risk|Plan|EpochRecord|DeployRecord|ReflectVerdict|Decision); repo archetypes ride alongside, never alone"
+            "vertex {bad} carries no base @type — every vertex must carry at least one of (Invariant|Breadcrumb|Term|Identity|SituationStructure|Risk|Plan|EpochRecord|DeployRecord|ReflectVerdict|Decision|ExpansionMount); repo archetypes ride alongside, never alone"
         ),
     )]
 }
@@ -671,14 +736,8 @@ fn type_iris(value: &Value) -> Vec<String> {
     }
 }
 
-/// C10 (digest-skew): installed seed/schemas/*.json, seed/context.yamlld, and
-/// the operating reference must byte-match this binary's canonical stamped
-/// form — the embedded template with the provenance stamp rendered for the
-/// CURRENT binary version — else the repo runs against a different base
-/// protocol than the installed binary and must be refreshed with `bedrock
-/// update`. A version-skewed stamp is exactly this violation. Absence is not
-/// skew — a repo that never installed a base file fails earlier and
-/// differently.
+/// C10: every Bedrock-owned installed base file, including the substrate
+/// checker lock, byte-matches this binary's canonical stamped form.
 fn digest_skew_checks(root: &Path, out: &mut Vec<Violation>) {
     let seed = &crate::embedded::SEED;
     use crate::provenance::Kind;
@@ -694,6 +753,24 @@ fn digest_skew_checks(root: &Path, out: &mut Vec<Violation>) {
     check_base_blob(root, out, "seed/context.yamlld", embedded_ctx, Kind::Hash);
     let embedded_op = Some(include_str!("embedded/bedrock-operating.md").as_bytes());
     check_base_blob(root, out, OPERATING_REF_PATH, embedded_op, Kind::Hash);
+    let lock_path = root.join(crate::contextreg::SUBSTRATE_LOCK_PATH);
+    if root.join("seed").is_dir() && !lock_path.is_file() {
+        out.push(Violation::new(
+            "C10",
+            crate::contextreg::SUBSTRATE_LOCK_PATH,
+            0,
+            "installed substrate lock is missing — run `bedrock update`; existing consumer workflows require a one-time manual migration",
+        ));
+    } else {
+        let embedded_lock = seed.get_file("substrate-lock.json").map(|f| f.contents());
+        check_base_blob(
+            root,
+            out,
+            crate::contextreg::SUBSTRATE_LOCK_PATH,
+            embedded_lock,
+            Kind::Json,
+        );
+    }
 }
 
 fn check_base_blob(
@@ -710,7 +787,7 @@ fn check_base_blob(
     if !p.exists() {
         return;
     }
-    // C10 coherence (0.2.1): the canonical expected form is the embedded
+    // C10 coherence: the canonical expected form is the embedded
     // template + the provenance stamp rendered for the current binary
     // version — install, update, and this comparison use the same render, so
     // raw embedded bytes ≠ installed bytes and a stale stamp flags here.
@@ -748,7 +825,7 @@ fn check_edges(
         if vertex_ids.contains(target) {
             continue;
         }
-        if let Some(path) = target.strip_prefix(crate::contextreg::PATH_PREFIX) {
+        if let Some(path) = crate::contextreg::path_from_iri(target) {
             if root.join(path).exists() {
                 continue;
             }

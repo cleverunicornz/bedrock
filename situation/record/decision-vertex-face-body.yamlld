@@ -1,13 +1,13 @@
 # Decision record: closed 2026-08-23 on execute/vertex-body-soft-budget.
 # The face carries the collapse; the body carries the full rationale — this
 # vertex is itself the first worked example of the face/body law it records.
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/decision-vertex-face-body"
-"@type": "https://yeetz.dev/bedrock/ontology/Decision"
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/decision-vertex-face-body"
+"@type": "urn:bedrock:ontology/Decision"
 label: "Vertices are one file: compiled face + uncompiled body"
 references:
-  - "https://yeetz.dev/bedrock/vertex/invariant-16-agents-md-register"
-  - "https://yeetz.dev/bedrock/vertex/invariant-01-possibility-space"
+  - "urn:bedrock:vertex/invariant-16-agents-md-register"
+  - "urn:bedrock:vertex/invariant-01-possibility-space"
 statement: >
   Chose the single-file vertex anatomy (0.5.0): the face — everything but
   `body` — compiles into the graph; `body`, a literal block scalar of
