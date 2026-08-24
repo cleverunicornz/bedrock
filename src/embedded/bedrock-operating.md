@@ -1,4 +1,4 @@
-# Installed by bedrock v0.6.0 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
+# Installed by bedrock v0.6.1 — DO NOT EDIT. This file is owned by the tool. Base changes: file an issue or PR at https://github.com/cleverunicornz/bedrock. Local refresh: bedrock update.
 # Bedrock operating reference — the base protocol
 
 This is the standardized minimum every bedrock repo builds on, plus the
@@ -10,6 +10,16 @@ never edited locally. Rule C10 (digest-skew) fails a repo whose installed
 copy differs from this binary's canonical stamped form (embedded template +
 provenance stamp for the current version) and names `bedrock update` as the
 fix. Repo law layers on top of this protocol; it never rewrites it.
+
+## Version gate
+
+`init` and `adopt` query crates.io before writing. Current or newer proceeds;
+stale refuses and names `cargo install yeetz-bedrock --locked --force`.
+Network, HTTP, response-shape, JSON, or semver failure refuses loudly —
+unverifiable never means current. `--offline` is the deliberate bypass and
+stamps both the local version and `offline: true` into the epoch record.
+Only a 404 or explicit zero-version registry response is the inactive
+first-publication path. `check`, `build`, and `update` never use the network.
 
 ## THE CHAIN: promise, oracle, witness, residual
 

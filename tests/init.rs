@@ -4,7 +4,9 @@
 use std::process::Command;
 
 mod common;
-use common::{Scratch, bedrock_exe, fixture_seed, manifest, run, run_no_seed};
+use common::{
+    Scratch, bedrock_exe, fixture_seed, manifest, run, run_gate, run_no_seed, version_json,
+};
 
 #[test]
 fn init_seeds_new_repo_and_passes_check() {
@@ -165,6 +167,10 @@ fn init_missing_seed_is_loud() {
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(s.path())
         .env("BEDROCK_SEED", s.path().join("does-not-exist"))
+        .env(
+            "BEDROCK_VERSION_JSON",
+            version_json(env!("CARGO_PKG_VERSION")),
+        )
         .output()
         .unwrap();
     let text = format!(
@@ -189,6 +195,10 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(s.path())
         .env_remove("BEDROCK_SEED")
+        .env(
+            "BEDROCK_VERSION_JSON",
+            version_json(env!("CARGO_PKG_VERSION")),
+        )
         .output()
         .unwrap();
     let text = format!(
@@ -379,46 +389,115 @@ fn update_refreshes_skewed_installed_base_files() {
 }
 
 #[test]
-fn offline_flag_stamps_epoch_record() {
-    let s = Scratch::new("offline");
-    let (c, out, err) = run(
+fn version_gate_offline_skips_lookup_and_stamps_epoch() {
+    let s = Scratch::new("gate-offline");
+    let (code, out, err) = run_gate(
         &["init", "--offline", s.path().to_str().unwrap()],
         &manifest(),
+        "{malformed",
     );
-    assert_eq!(c, 0, "init must succeed\n{out}\n{err}");
+    assert_eq!(
+        code, 0,
+        "--offline must skip malformed lookup:\n{out}\n{err}"
+    );
+    assert!(out.contains("version gate skipped"), "{out}");
     let record = s.path().join("situation/record");
-    let fname = std::fs::read_dir(&record)
+    let path = std::fs::read_dir(&record)
         .unwrap()
         .flatten()
         .next()
         .unwrap()
-        .file_name()
-        .to_string_lossy()
-        .into_owned();
-    let text = std::fs::read_to_string(record.join(&fname)).unwrap();
-    assert!(
-        text.contains("offline: true"),
-        "offline must stamp the record: {text}"
-    );
+        .path();
+    let text = std::fs::read_to_string(path).unwrap();
+    assert!(text.contains("offline: true"), "{text}");
 }
 
 #[test]
-fn version_gate_notice_printed() {
-    // Before first publication the gate is a no-op WITH a notice at
-    // init/adopt, and never runs for check/build.
-    let s = Scratch::new("gate");
-    let (c, out, _) = run(&["init", s.path().to_str().unwrap()], &manifest());
-    assert_eq!(c, 0);
-    assert!(
-        out.contains("version gate inactive until the crate's first publication"),
-        "init must print the gate notice: {out}"
+fn version_gate_current_proceeds_and_other_commands_ignore_lookup() {
+    let s = Scratch::new("gate-current");
+    let (code, out, err) = run(&["init", s.path().to_str().unwrap()], &manifest());
+    assert_eq!(code, 0, "current version must proceed:\n{out}\n{err}");
+    assert!(!out.contains("Upgrade with"), "{out}");
+
+    for command in ["check", "build", "update"] {
+        let (code, out, err) = run_gate(
+            &[command, s.path().to_str().unwrap()],
+            &manifest(),
+            "{malformed",
+        );
+        assert_eq!(
+            code, 0,
+            "{command} must never consult the malformed gate response:\n{out}\n{err}"
+        );
+        assert!(!out.contains("version gate"), "{command}: {out}");
+    }
+}
+
+#[test]
+fn version_gate_stale_refuses_before_writing() {
+    let s = Scratch::new("gate-stale");
+    let response = version_json("99.0.0");
+    let (code, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        &response,
     );
-    let (c2, out2, _) = run(&["check", s.path().to_str().unwrap()], &manifest());
-    assert_eq!(c2, 0);
+    let combined = format!("{out}\n{err}");
+    assert_eq!(code, 1, "stale binary must refuse:\n{combined}");
+    assert!(combined.contains("v99.0.0"), "{combined}");
     assert!(
-        !out2.contains("version gate"),
-        "check must never touch the gate"
+        combined.contains("cargo install yeetz-bedrock --locked --force"),
+        "{combined}"
     );
+    assert!(!s.path().join("situation").exists());
+}
+
+#[test]
+fn version_gate_semver_treats_stable_as_newer_than_same_prerelease() {
+    let s = Scratch::new("gate-newer");
+    let response = version_json(&format!("{}-alpha.1", env!("CARGO_PKG_VERSION")));
+    let (code, out, err) = run_gate(
+        &["init", s.path().to_str().unwrap()],
+        &manifest(),
+        &response,
+    );
+    assert_eq!(code, 0, "local stable must proceed:\n{out}\n{err}");
+    assert!(out.contains("newer than crates.io"), "{out}");
+}
+
+#[test]
+fn version_gate_lookup_failures_are_loud() {
+    for (tag, response, expected) in [
+        ("json", "{malformed", "not valid JSON"),
+        (
+            "semver",
+            "{\"crate\":{\"max_version\":\"not-semver\",\"num_versions\":1}}",
+            "invalid max_version",
+        ),
+        (
+            "shape",
+            "{\"crate\":{\"num_versions\":1}}",
+            "no crate.max_version",
+        ),
+    ] {
+        let s = Scratch::new(&format!("gate-fail-{tag}"));
+        let (code, out, err) =
+            run_gate(&["init", s.path().to_str().unwrap()], &manifest(), response);
+        let combined = format!("{out}\n{err}");
+        assert_eq!(code, 1, "{tag} lookup failure must refuse:\n{combined}");
+        assert!(combined.contains(expected), "{combined}");
+        assert!(combined.contains("--offline"), "{combined}");
+        assert!(!s.path().join("situation").exists());
+    }
+}
+
+#[test]
+fn version_gate_zero_versions_prints_first_publication_notice() {
+    let s = Scratch::new("gate-zero");
+    let response = "{\"crate\":{\"num_versions\":0}}";
+    let (code, out, err) = run_gate(&["init", s.path().to_str().unwrap()], &manifest(), response);
+    assert_eq!(code, 0, "zero-version registry must proceed:\n{out}\n{err}");
+    assert!(out.contains("reports no published"), "{out}");
 }
 
 #[test]
@@ -430,6 +509,10 @@ fn init_from_bad_seed_layout_is_loud() {
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
         .env("BEDROCK_SEED", &bad_seed)
+        .env(
+            "BEDROCK_VERSION_JSON",
+            version_json(env!("CARGO_PKG_VERSION")),
+        )
         .output()
         .unwrap();
     let text = format!(
@@ -464,6 +547,10 @@ fn installed_workflow_is_promoted() {
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
         .env("BEDROCK_SEED", seed_copy.dir.join("seed"))
+        .env(
+            "BEDROCK_VERSION_JSON",
+            version_json(env!("CARGO_PKG_VERSION")),
+        )
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(0), "{:?}", out);
@@ -544,6 +631,10 @@ fn init_accepts_w3_skeleton_layout() {
         .args(["init", s.path().to_str().unwrap()])
         .current_dir(manifest())
         .env("BEDROCK_SEED", seed_copy.dir.join("seed"))
+        .env(
+            "BEDROCK_VERSION_JSON",
+            version_json(env!("CARGO_PKG_VERSION")),
+        )
         .output()
         .unwrap();
     assert_eq!(
