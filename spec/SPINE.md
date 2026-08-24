@@ -22,11 +22,14 @@ compiled into it and are emitted as output. Three commands plus two internal:
 - `bedrock build` — compile root `AGENTS.md`, the resident TriG working-set
   projection (§5). Fails if `check` fails.
 
-Version gate: once published, the binary checks crates.io for the latest
-version at startup of `init`/`adopt` (never `check`/`build` — CI must not
-depend on the network); if stale it refuses and prints the update command.
-`--offline` runs anyway but stamps the version into whatever record it writes.
-Until first publication the gate is a no-op with a notice.
+Version gate: `init`/`adopt` query crates.io for the latest published
+`yeetz-bedrock`; current or newer proceeds, stale refuses before writing and
+names `cargo install yeetz-bedrock --locked --force`. Network/HTTP/response/
+semver failure refuses loudly — unverifiable is never translated to current.
+`--offline` deliberately bypasses lookup and stamps `offline: true` plus the
+local version into the epoch record. A 404 or explicit zero-version response
+is the only inactive first-publication path. `check`/`build`/`update` never
+touch the network.
 
 ## 2. Repository layout (this repo)
 

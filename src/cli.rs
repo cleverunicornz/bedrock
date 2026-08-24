@@ -25,11 +25,11 @@ Usage:
   bedrock --version / -V             print version.
 
 Flags:
-  --offline     skip the (post-publication) version gate; the version is still stamped into the
-                epoch record. Only meaningful for init/adopt.
+  --offline     deliberately skip the init/adopt crates.io version gate; the local version and
+                `offline: true` are still stamped into the epoch record.
   DIR           repo root; defaults to the current directory.
 
-Until the crate's first publication the version gate is a no-op with a notice (SPINE §1).
+init/adopt refuse stale or unverifiable binaries; check/build/update never use the network (SPINE §1).
 ";
 
 pub enum Command {

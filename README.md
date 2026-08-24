@@ -16,6 +16,11 @@ cargo install yeetz-bedrock
 The crate is `yeetz-bedrock` (the name `bedrock` is taken); the binary it
 installs is `bedrock`.
 
+`init`/`adopt` query crates.io before writing: stale or unverifiable binaries
+refuse and name the locked install command. `--offline` is the deliberate
+bypass and is stamped into the epoch record. `check`/`build`/`update` remain
+network-free.
+
 ## Commands
 
 - `bedrock init`  — seed a new repo: install the `situation/` skeleton and

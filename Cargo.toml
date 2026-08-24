@@ -1,6 +1,6 @@
 [package]
 name = "yeetz-bedrock"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 rust-version = "1.85"
 description = "bedrock — compile an org's YAML-LD situation into ONE injected resident graph: root AGENTS.md"
@@ -42,6 +42,12 @@ include_dir = "=0.7.4"     # embeds the seed/ tree at compile time (SPINE §1 em
 # regex scanning is forbidden). serde_norway resolves anchors internally and
 # exposes no syntax API, so we scan tokens directly.
 unsafe-libyaml-norway = "=0.2.15"
+# crates.io lookup for the init/adopt version gate. These exact versions are
+# already resolved transitively by jsonschema; direct pins make our use part
+# of the assured dependency boundary without adding a second HTTP/TLS stack.
+reqwest = { version = "=0.13.4", default-features = false, features = ["blocking", "json", "http2", "rustls-no-provider"] }
+rustls = { version = "=0.23.43", features = ["aws-lc-rs"] }
+semver = "=1.0.28"
 
 [profile.release]
 lto = true

@@ -3,14 +3,16 @@
 
 use crate::check::{self, Compiled};
 use crate::errors::{Fatal, Violation};
+use semver::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
-/// Version gate (SPINE §1): until the crate's first publication the gate is
-/// a no-op that prints a notice. Once published, flip this to `true` and the
-/// network check (against crates.io's `yeetz-bedrock`) becomes active — it
-/// must never run for `check`/`build`, only `init`/`adopt`.
-pub const VERSION_GATE_ENABLED: bool = false;
+/// Registry endpoint and deterministic response seam for the init/adopt
+/// gate. When set, `BEDROCK_VERSION_JSON` is parsed as the crates.io response
+/// body; integration tests therefore never touch the network.
+pub const CRATES_IO_ENDPOINT: &str = "https://crates.io/api/v1/crates/yeetz-bedrock";
+pub const VERSION_LOOKUP_ENV: &str = "BEDROCK_VERSION_JSON";
 
 /// `bedrock build` — validate the complete situation and compile the single
 /// artifact: root AGENTS.md, its resident TriG working-set projection.
@@ -630,22 +632,108 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
-/// The version gate: currently a no-op with a notice until first publication.
-/// `--offline` is stamped into the epoch record regardless.
+/// SPINE §1 version gate: init/adopt query crates.io and refuse stale or
+/// unverifiable binaries. `--offline` deliberately skips lookup and is
+/// stamped into the epoch record. No other command calls this function.
 fn version_gate(cmd: &str, offline: bool) -> Result<(), Fatal> {
-    if VERSION_GATE_ENABLED {
-        // TODO(publication): query crates.io for the latest `yeetz-bedrock`; if
-        // the running binary is stale, refuse and print the update command;
-        // `--offline` skips the check but still stamps the version into the
-        // record (SPINE §1). Network MUST never be touched by check/build.
-        let _ = offline;
-    } else {
+    let local =
+        Version::parse(env!("CARGO_PKG_VERSION")).expect("CARGO_PKG_VERSION is valid semver");
+    if offline {
         println!(
-            "bedrock {}: version gate inactive until the crate's first publication (SPINE §1)",
-            cmd
+            "bedrock {cmd}: --offline: version gate skipped (v{local} used as-is; version stamped into the epoch record)"
         );
+        return Ok(());
     }
-    Ok(())
+
+    match lookup_latest() {
+        Lookup::Latest(latest) if local < latest => Err(Fatal(format!(
+            "bedrock {cmd}: this binary is v{local}, but crates.io publishes yeetz-bedrock v{latest}. Refusing to seed from a stale protocol. Upgrade with: `cargo install yeetz-bedrock --locked --force`. To proceed deliberately, use `--offline`; the local version is still stamped into the epoch record."
+        ))),
+        Lookup::Latest(latest) if local > latest => {
+            println!("bedrock {cmd}: running v{local}, newer than crates.io v{latest}; proceeding");
+            Ok(())
+        }
+        Lookup::Latest(_) => Ok(()),
+        Lookup::None => {
+            println!(
+                "bedrock {cmd}: version gate inactive — crates.io reports no published yeetz-bedrock versions"
+            );
+            Ok(())
+        }
+        Lookup::Failed(reason) => Err(Fatal(format!(
+            "bedrock {cmd}: version gate cannot determine the latest yeetz-bedrock version: {reason}. Refusing to seed from an unverifiable protocol. Retry with crates.io reachable, or use `--offline`; the local version is still stamped into the epoch record."
+        ))),
+    }
+}
+
+enum Lookup {
+    Latest(Version),
+    None,
+    Failed(String),
+}
+
+fn lookup_latest() -> Lookup {
+    if let Some(body) = std::env::var_os(VERSION_LOOKUP_ENV) {
+        return classify_registry_response(body.to_string_lossy().as_bytes());
+    }
+    match fetch_from_crates_io() {
+        Ok(Some(body)) => classify_registry_response(&body),
+        Ok(None) => Lookup::None,
+        Err(reason) => Lookup::Failed(reason),
+    }
+}
+
+fn classify_registry_response(body: &[u8]) -> Lookup {
+    let value: serde_json::Value = match serde_json::from_slice(body) {
+        Ok(value) => value,
+        Err(e) => return Lookup::Failed(format!("crates.io response is not valid JSON: {e}")),
+    };
+    if value
+        .pointer("/crate/num_versions")
+        .and_then(serde_json::Value::as_u64)
+        == Some(0)
+    {
+        return Lookup::None;
+    }
+    let Some(raw) = value
+        .pointer("/crate/max_version")
+        .and_then(serde_json::Value::as_str)
+    else {
+        return Lookup::Failed("crates.io response carries no crate.max_version".to_string());
+    };
+    match Version::parse(raw) {
+        Ok(version) => Lookup::Latest(version),
+        Err(e) => Lookup::Failed(format!(
+            "crates.io returned invalid max_version `{raw}`: {e}"
+        )),
+    }
+}
+
+/// Real HTTPS lookup; 404 means a genuinely unpublished crate.
+fn fetch_from_crates_io() -> Result<Option<Vec<u8>>, String> {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent(format!(
+            "bedrock/{} (version gate; https://github.com/cleverunicornz/bedrock)",
+            env!("CARGO_PKG_VERSION")
+        ))
+        .build()
+        .map_err(|e| format!("HTTP client construction failed: {e}"))?;
+    let response = client
+        .get(CRATES_IO_ENDPOINT)
+        .send()
+        .map_err(|e| format!("crates.io lookup failed: {e}"))?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let response = response
+        .error_for_status()
+        .map_err(|e| format!("crates.io lookup failed: {e}"))?;
+    response
+        .bytes()
+        .map(|bytes| Some(bytes.to_vec()))
+        .map_err(|e| format!("crates.io response read failed: {e}"))
 }
 
 /// Finalize: compile + write artifacts + verify, then emit the instruction

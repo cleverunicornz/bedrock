@@ -29,12 +29,23 @@ pub fn donor_execution_record() -> PathBuf {
     manifest().join("spec/donor-execution-record.yamlld")
 }
 
-/// Run the bedrock binary with `env`-inherited plus BEDROCK_SEED.
-pub fn run(args: &[&str], cwd: &Path) -> (i32, String, String) {
+pub fn version_json(version: &str) -> String {
+    format!("{{\"crate\":{{\"max_version\":\"{version}\",\"num_versions\":1}}}}")
+}
+
+pub fn use_current_gate(cmd: &mut Command) {
+    cmd.env(
+        "BEDROCK_VERSION_JSON",
+        version_json(env!("CARGO_PKG_VERSION")),
+    );
+}
+
+pub fn run_gate(args: &[&str], cwd: &Path, response: &str) -> (i32, String, String) {
     let out = Command::new(bedrock_exe())
         .args(args)
         .current_dir(cwd)
         .env("BEDROCK_SEED", fixture_seed())
+        .env("BEDROCK_VERSION_JSON", response)
         .output()
         .expect("spawn bedrock");
     (
@@ -44,13 +55,30 @@ pub fn run(args: &[&str], cwd: &Path) -> (i32, String, String) {
     )
 }
 
-/// Run without forcing BEDROCK_SEED (tests the `<root>/seed` default path).
-pub fn run_no_seed(args: &[&str], cwd: &Path) -> (i32, String, String) {
-    let out = Command::new(bedrock_exe())
+/// Run the binary with installed seed fixtures and a current-version registry
+/// response. Integration tests are network-free by construction.
+pub fn run(args: &[&str], cwd: &Path) -> (i32, String, String) {
+    let mut command = Command::new(bedrock_exe());
+    command
         .args(args)
         .current_dir(cwd)
-        .output()
-        .expect("spawn bedrock");
+        .env("BEDROCK_SEED", fixture_seed());
+    use_current_gate(&mut command);
+    let out = command.output().expect("spawn bedrock");
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+/// Run without forcing BEDROCK_SEED; the gate still uses a deterministic
+/// current-version response.
+pub fn run_no_seed(args: &[&str], cwd: &Path) -> (i32, String, String) {
+    let mut command = Command::new(bedrock_exe());
+    command.args(args).current_dir(cwd);
+    use_current_gate(&mut command);
+    let out = command.output().expect("spawn bedrock");
     (
         out.status.code().unwrap_or(-1),
         String::from_utf8_lossy(&out.stdout).into_owned(),
