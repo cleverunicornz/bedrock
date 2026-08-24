@@ -260,10 +260,8 @@ fn install_seed(seed: &Path, target: &Path) -> Result<(), Fatal> {
     // any floor vertices, and the workflow template directory.
     let seed_dst = target.join("seed");
     copy_dir(seed, &seed_dst)?;
-    // 0.2.1 provenance: stamp the installed base files under target/seed/
-    // (schemas `$comment`, context `#`) so a template seed yields canonical
-    // stamped bytes; idempotent when the seed already carries the current
-    // version's stamp.
+    // Stamp the installed Bedrock-owned base files, including the substrate
+    // lock. Repo-authored situation vertices remain consumer-owned.
     stamp_installed_seed(target)?;
     install_gitignore(seed, target)?;
     promote_workflow(target, &seed_dst)?;
@@ -271,8 +269,8 @@ fn install_seed(seed: &Path, target: &Path) -> Result<(), Fatal> {
     // C10 like the schemas/context).
     install_operating_reference(target)?;
 
-    // Generate the consumer's first graph.trig/AGENTS.md is deferred to
-    // `finalize_and_verify`, which runs after the epoch record exists.
+    // Generate the consumer's first AGENTS.md resident projection after the
+    // canonical epoch record exists.
     Ok(())
 }
 
@@ -325,8 +323,7 @@ fn stamp_installed_floor(skeleton: &Path, target: &Path) -> Result<(), Fatal> {
     Ok(())
 }
 
-/// Stamp the installed base files under `target/seed/`: the namespace
-/// schemas (`"$comment"` key) and the repo-local context (`#` header).
+/// Stamp schemas and substrate lock as JSON; context as hash-comment text.
 fn stamp_installed_seed(target: &Path) -> Result<(), Fatal> {
     use crate::provenance::Kind;
     for ns in crate::contextreg::GRAPH_NAMESPACES {
@@ -341,6 +338,10 @@ fn stamp_installed_seed(target: &Path) -> Result<(), Fatal> {
     let ctx = target.join("seed").join("context.yamlld");
     if ctx.is_file() {
         crate::provenance::stamp_path(Kind::Hash, &ctx)?;
+    }
+    let lock = target.join(crate::contextreg::SUBSTRATE_LOCK_PATH);
+    if lock.is_file() {
+        crate::provenance::stamp_path(Kind::Json, &lock)?;
     }
     Ok(())
 }
@@ -484,13 +485,10 @@ fn install_workflow_if_missing(target: &Path, embedded_seed: &Path) -> Result<us
     Ok(installed)
 }
 
-/// `bedrock update` — refresh the installed base files (schemas, context,
-/// operating reference, missing workflow template) from the binary's embedded
-/// copies; print exactly what changed; then run `check` + `build`.
-///
-/// Additive-safe: repo-authored vertices, extension schemas, and a present
-/// (customized) workflow template are never touched; `AGENTS.md`/`graph.trig`
-/// are regenerated and nothing else.
+/// `bedrock update` refreshes only Bedrock-owned base files: schemas, context,
+/// operating reference, substrate lock, and a missing workflow template. It
+/// never changes authored vertices, registrations, mounts, or a present
+/// consumer workflow; only AGENTS.md is regenerated.
 pub fn update(target: &Path) -> Result<(), Fatal> {
     let seed = embedded_seed()?;
     let mut changed: Vec<String> = Vec::new();
@@ -520,6 +518,20 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
         &bytes,
     )? {
         changed.push("seed/context.yamlld".to_string());
+    }
+    // seed/substrate-lock.json
+    let lock = seed.join("substrate-lock.json");
+    let bytes = std::fs::read(&lock).map_err(|e| {
+        Fatal(format!(
+            "cannot read embedded seed/substrate-lock.json: {e}"
+        ))
+    })?;
+    if crate::provenance::write_stamped(
+        crate::provenance::Kind::Json,
+        &target.join(crate::contextreg::SUBSTRATE_LOCK_PATH),
+        &bytes,
+    )? {
+        changed.push(crate::contextreg::SUBSTRATE_LOCK_PATH.to_string());
     }
     // operating reference
     let op_bytes = include_str!("embedded/bedrock-operating.md").as_bytes();
@@ -557,27 +569,127 @@ pub fn update(target: &Path) -> Result<(), Fatal> {
     Ok(())
 }
 
-/// Write the epoch record vertex (SPINE §6), conforming to the record
-/// namespace schema shipped in seed/schemas/record.json (W2 contract):
-/// vertex @id, EpochRecord type, and `commit`/`version`/`mode`/`offline`/
-/// `statement`.
+/// Explicit identity migration. Rewrites only Bedrock base-namespace YAML-LD
+/// source, never registered mount contents or machine-owned base files, then
+/// regenerates the resident AGENTS.md projection.
+pub fn migrate_iris(target: &Path) -> Result<(), Fatal> {
+    let (violations, _) = check::run(target)?;
+    if !violations.is_empty() {
+        print_violations(&violations);
+        return Err(Fatal(
+            "bedrock migrate-iris aborted: repository must pass `bedrock check` before migration"
+                .to_string(),
+        ));
+    }
+
+    let mut changed = Vec::new();
+    for path in authored_yamlld_paths(target)? {
+        let text = std::fs::read_to_string(&path)
+            .map_err(|e| Fatal(format!("cannot read {}: {e}", path.display())))?;
+        let migrated = text
+            .replace(
+                crate::contextreg::LEGACY_BEDROCK_IRI_BASE,
+                crate::contextreg::BEDROCK_IRI_BASE,
+            )
+            .replace(
+                crate::contextreg::LEGACY_GRAPH_PREFIX,
+                crate::contextreg::GRAPH_PREFIX,
+            );
+        if migrated != text {
+            std::fs::write(&path, migrated.as_bytes())
+                .map_err(|e| Fatal(format!("cannot migrate {}: {e}", path.display())))?;
+            changed.push(
+                path.strip_prefix(target)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+    }
+
+    regenerate_and_verify(target, "migrate-iris")?;
+    println!(
+        "bedrock migrate-iris: rewrote {} source file(s); check + build pass (AGENTS.md resident projection regenerated)",
+        changed.len()
+    );
+    for rel in changed {
+        println!("  ~ {rel}");
+    }
+    Ok(())
+}
+
+fn authored_yamlld_paths(target: &Path) -> Result<Vec<PathBuf>, Fatal> {
+    let mut paths = Vec::new();
+    for namespace in crate::contextreg::NAMESPACES {
+        let directory = target.join("situation").join(namespace);
+        if namespace == "references" {
+            collect_yamlld_files(&directory, &mut paths)?;
+            continue;
+        }
+        let entries = std::fs::read_dir(&directory)
+            .map_err(|e| Fatal(format!("cannot read {}: {e}", directory.display())))?;
+        for entry in entries {
+            let entry = entry
+                .map_err(|e| Fatal(format!("cannot read {} entry: {e}", directory.display())))?;
+            let path = entry.path();
+            let metadata = std::fs::symlink_metadata(&path)
+                .map_err(|e| Fatal(format!("cannot inspect {}: {e}", path.display())))?;
+            if metadata.is_file()
+                && !metadata.file_type().is_symlink()
+                && path.extension().and_then(|value| value.to_str()) == Some("yamlld")
+            {
+                paths.push(path);
+            }
+        }
+    }
+    paths.sort();
+    Ok(paths)
+}
+
+fn collect_yamlld_files(directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), Fatal> {
+    let entries = std::fs::read_dir(directory)
+        .map_err(|e| Fatal(format!("cannot read {}: {e}", directory.display())))?;
+    for entry in entries {
+        let entry =
+            entry.map_err(|e| Fatal(format!("cannot read {} entry: {e}", directory.display())))?;
+        let path = entry.path();
+        let metadata = std::fs::symlink_metadata(&path)
+            .map_err(|e| Fatal(format!("cannot inspect {}: {e}", path.display())))?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
+        if metadata.is_dir() {
+            collect_yamlld_files(&path, out)?;
+        } else if metadata.is_file()
+            && path.extension().and_then(|value| value.to_str()) == Some("yamlld")
+        {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// Write a canonical-URN epoch record. Legacy identities remain readable but
+/// are never authored by init/adopt.
 fn write_epoch_record(target: &Path, mode: &str, offline: bool) -> Result<String, Fatal> {
     let sha = current_sha(target);
     let short = if sha.len() >= 12 { &sha[..12] } else { &sha };
     let date = utc_date_fragment();
     let fname = format!("epoch-{date}-{short}.yamlld");
-    let id = format!("https://yeetz.dev/bedrock/vertex/epoch-{date}-{short}");
+    let id = format!("{}epoch-{date}-{short}", crate::contextreg::VERTEX_PREFIX);
+    let epoch_type = crate::contextreg::ontology_type("EpochRecord");
     let statement = "Everything after this commit operates under bedrock; prior history is reference, never law.";
 
     let body = format!(
-        "\"@context\": \"https://yeetz.dev/bedrock/context/v1\"\n\
+        "\"@context\": \"{}\"\n\
          \"@id\": \"{id}\"\n\
-         \"@type\": \"https://yeetz.dev/bedrock/ontology/EpochRecord\"\n\
+         \"@type\": \"{epoch_type}\"\n\
          commit: \"{sha}\"\n\
          version: \"{}\"\n\
          mode: {mode}\n\
          offline: {offline}\n\
          statement: \"{statement}\"\n",
+        crate::contextreg::BEDROCK_CONTEXT_IRI,
         env!("CARGO_PKG_VERSION"),
     );
 

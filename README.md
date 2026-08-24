@@ -1,79 +1,162 @@
 # bedrock
 
-`bedrock` installs a complete machine-readable YAML-LD situation store,
-validates every source, and compiles its current resident working set into
-the one deterministic `AGENTS.md` every agent receives.
+`bedrock` validates a repository's complete YAML-LD situation and compiles its
+current resident working set into one injected artifact: root `AGENTS.md`, a
+comment preamble followed by deterministic TriG.
 
-Seed a new repo, epoch-change an existing one, validate source and projection
-in CI, and regenerate the injected graph — from a single binary.
+Crate: `yeetz-bedrock`. Binary: `bedrock`.
 
 ## Install
 
 ```sh
-cargo install yeetz-bedrock
+cargo install --locked yeetz-bedrock
 ```
-
-The crate is `yeetz-bedrock` (the name `bedrock` is taken); the binary it
-installs is `bedrock`.
-
-`init`/`adopt` query crates.io before writing: stale or unverifiable binaries
-refuse and name the locked install command. `--offline` is the deliberate
-bypass and is stamped into the epoch record. `check`/`build`/`update` remain
-network-free.
 
 ## Commands
 
-- `bedrock init`  — seed a new repo: install the `situation/` skeleton and
-  seed floor, generate root `AGENTS.md`, print the init instruction set.
-- `bedrock adopt` — epoch-change an existing repo: same install, plus an
-  epoch record declaring the cut line.
-- `bedrock check` — validate complete source plus the resident projection;
-  print exact resident/cold counts and soft face budgets; the CI entrypoint.
-- `bedrock build` — regenerate resident TriG in AGENTS.md; refuses while
-  `check` fails.
-- `bedrock update` — refresh installed base files from this binary's embedded
-  copies, then check and build; never touches repo-authored vertices.
-- `bedrock help`  — the contract, short.
+- `bedrock init [DIR]` — form a new repository; crates.io version-gated.
+- `bedrock adopt [DIR]` — epoch-change an existing repository; version-gated.
+- `bedrock check [DIR]` — validate complete source plus resident projection,
+  C1–C12.
+- `bedrock build [DIR]` — regenerate root AGENTS.md, the only artifact.
+- `bedrock update [DIR]` — refresh only Bedrock-owned base files and a missing
+  workflow; never authored vertices, mounts, or an existing workflow.
+- `bedrock migrate-iris [DIR]` — explicitly migrate base-namespace legacy
+  Bedrock IRIs to canonical URNs, never mount contents.
 
-## The model
+`--offline` deliberately bypasses only the init/adopt version lookup and is
+stamped into the epoch record.
 
-Six situation namespaces, five work verbs, one `AGENTS.md` per repository.
+## 0.7.0 identity
 
-### Canonical store and resident graph
+Canonical public coordinates use `urn:bedrock:`:
 
-Every repo carries `situation/`, the complete validated store:
+| identity | coordinate |
+|---|---|
+| context | `urn:bedrock:context/v1` |
+| ontology | `urn:bedrock:ontology/<Term>` |
+| vertex | `urn:bedrock:vertex/<slug>` |
+| path | `urn:bedrock:path/<repo-relative>` |
+| predicate | `urn:bedrock:<predicate>` |
+| graph | `urn:bedrock:graph/<namespace>` |
 
-- `definition/`, `architecture/`, current `risk/` — resident knowledge.
-- `plan/` — complete Plans. Only `active` contributes a compact routing face;
-  draft/done/abandoned and all execution payload stay cold.
-- `record/` — Decisions resident; epoch/deploy/reflect records cold.
-- `references/` — cold shared depth; may nest and hold non-YAML-LD files.
+New authoring emits URNs only. Reads continue accepting former
+`https://yeetz.dev/bedrock/...` source and `https://yeetz.dev/graph/...` named
+graphs. Update never rewrites authored source; migration is explicit.
 
-Cold means source-only, not discarded: the resident SituationStructure node
-discloses each path. Agents pull history or depth only when the task needs it.
-Every source stays schema- and edge-validated.
+## Resident graph
 
-AGENTS.md is the deterministic resident TriG projection, not the archive.
-Same source and states, same bytes.
+`situation/` remains the complete canonical store. AGENTS.md contains current
+operational knowledge:
 
-### Work verbs
+- definition, architecture, current risks, Decisions: resident;
+- active Plans: compact routing faces resident;
+- draft/done/abandoned Plans, episodic records, references, bodies: cold;
+- ExpansionMount registrations and Bedrock pointer linkage: resident.
 
-Work runs in short-lived branches, one verb per state:
+Every vertex is one YAML-LD file. Optional `body: |` is unbounded node-local
+depth and never compiles. C11 prevents resident vertex edges from targeting
+cold vertices. The soft 4096-character face budget is advisory only.
 
-- `think/...`    explore and decide.
-- `plan/...`     write the plan as a graph.
-- `execute/...`  do the work.
-- `reflect/...`  review what was done.
-- `deploy/...`   place the result.
+## Six base namespaces plus registered opaque mounts
 
-### One AGENTS.md
+The base namespaces remain exactly:
 
-`bedrock build` regenerates root AGENTS.md from the resident working set.
-Hand-editing it is drift; `check` fails instead of tolerating it.
+`definition`, `architecture`, `risk`, `plan`, `record`, `references`.
 
-### Brittleness with intent
+A mount becomes legal only through one consumer-authored
+`situation/architecture/mount-<slug>.yamlld` vertex with base type
+`urn:bedrock:ontology/ExpansionMount`. Required generic fields:
 
-`bedrock check` fails loudly and exactly: one violation per line, `RULE
-path:line message`. The failure output is the fix instruction. The tool is
-not forgiving by design — it is written to fail hard so agents fix the cause,
-not the symptom.
+```yaml
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/mount-example-expansion"
+"@type":
+  - "urn:example:ontology/ExampleMount"
+  - "urn:bedrock:ontology/ExpansionMount"
+label: "example-expansion"
+mount_contract_version: 1
+mount_name: example-expansion
+mount_path: "urn:bedrock:path/situation/example-expansion"
+checker_identity: "urn:example:checker/v1"
+checker_arguments:
+  - check
+init_path: "urn:bedrock:path/situation/example-expansion/example-init.yaml"
+init_sha256: "<64 lowercase hex digits>"
+graph_manifest_path: "urn:bedrock:path/situation/example-expansion/graph-manifest.yaml"
+graph_manifest_sha256: "<64 lowercase hex digits>"
+```
+
+Checker data is never executed. The mount root is a unique real non-symlink
+direct child of `situation/`.
+
+The mount owns one stable manifest:
+
+```yaml
+artifacts:
+  - path: situation/example-expansion/runs/run-1/graph.trig
+    sha256: "<64 lowercase hex digits>"
+```
+
+`artifacts: []` is valid. Paths are strictly sorted normalized repo-relative
+strings.
+
+## C12 opaque boundary
+
+Bedrock never compiles or base-schema-validates mount contents. It only:
+
+1. proves registration/root/version/uniqueness;
+2. rejects overlaps and any nested `AGENTS.md`;
+3. inspects structured LD source for Bedrock context/base-type claims;
+4. parses registered RDF only to reject Bedrock-owned IRIs in every RDF
+   position;
+5. verifies containment, regular files, and SHA-256 for init, manifest, and
+   manifest-listed graphs.
+
+Other bytes are opaque. Registered graph formats are `.trig`, `.nq`, `.ttl`,
+and `.nt`.
+
+## One-artifact pointer linkage
+
+Bedrock emits registration triples and canonical pointer linkage inside the
+resident architecture graph in AGENTS.md:
+
+```text
+registration --references------> manifest path
+mount path   --produces---------> manifest path
+manifest path --artifact-digest-> exact manifest SHA-256
+```
+
+AGENTS.md's comment preamble also has a deterministic `Mounted expansions`
+section, one line per registration. Expansion graph quads are never included.
+Mount-owned run graphs remain inside mounts.
+
+This is the Mount Contract v1 adaptation to Bedrock's post-0.4 single-artifact
+model: no separate substrate graph file is reintroduced.
+
+## ReflectVerdict and existing anatomy
+
+A ReflectVerdict may subject an existing base vertex or existing path
+canonically contained by a registered mount. It remains an episodic cold
+record. Decision residency/supersession, Plan face/body rules, witness gates,
+and projection closure remain unchanged.
+
+## Substrate lock and CI
+
+`seed/substrate-lock.json` pins exact Bedrock checker package/ref and supported
+Mount Contract versions. C10 guards it. The seed workflow keeps the 0.6 dry-run
+projection report and AGENTS-only drift gate, but installs Bedrock only from
+that lock under runner temporary storage.
+
+Existing workflows are never rewritten. Mount consumers manually replace the
+standalone job with the expansion-owned combined witness job, ordered:
+Bedrock check, expansion check, expansion build, expansion graph/manifest
+no-diff, AGENTS.md no-diff.
+
+Failures remain:
+
+```text
+RULE path:line message
+```
+
+Fix the cause; never hand-edit AGENTS.md.

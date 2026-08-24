@@ -5,16 +5,16 @@ root `AGENTS.md`, ran `check`, and it passed. Go in order.
 
 ## 1. What was installed
 
-- `situation/` skeleton — six empty namespaces, ready for vertices.
-- Seed floor — invariants and terms as vertices tagged `layer: floor`.
-- A workflow hook — `bedrock check` + `bedrock build` on `situation/` changes.
+- `situation/` skeleton — six base namespaces, ready for vertices.
+- Seed floor — invariants and terms tagged `layer: floor`.
+- `seed/substrate-lock.json` plus a lock-consuming dry-run workflow.
 - The operating reference — `situation/references/bedrock-operating.md`, the
   base protocol: the CHAIN (promise, oracle, witness, residual), the ontology,
   every rule. Read it before writing your first vertex.
 - Root `AGENTS.md`, the resident situation graph. Read it first; never
   hand-edit it. Complete source and cold history stay under `situation/`.
 
-## 2. The six namespaces
+## 2. Six base namespaces plus registered opaque mounts
 
 Vertices live flat in their namespace: `situation/<ns>/<local-name>.yamlld`.
 
@@ -25,7 +25,9 @@ Vertices live flat in their namespace: `situation/<ns>/<local-name>.yamlld`.
 - `record/` — Decisions resident; epoch/deploy/reflect records cold.
 - `references/` — cold shared depth; may nest and hold markdown.
 
-No new top-level directories under `situation/`.
+No other direct child is legal. An expansion root becomes legal only through
+a complete architecture ExpansionMount registration; it is never a seventh
+namespace.
 
 ## 3. The five work verbs
 
@@ -58,5 +60,5 @@ it by hand; delete any other copy. This law is non-negotiable.
 Commit source and regenerated AGENTS.md (the resident projection); open a
 pull request. A human merges; you do not merge your own work.
 
-Summary: skeleton, floor, workflow hook, and root AGENTS.md are live. Add
-law as vertices, run `bedrock build`, then PR for a human merge.
+Summary: skeleton, floor, substrate lock, workflow, and root AGENTS.md are
+live. Add law as vertices, run `bedrock build`, then PR for a human merge.

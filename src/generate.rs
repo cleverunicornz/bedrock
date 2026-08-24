@@ -1,20 +1,16 @@
-//! AGENTS.md resident-projection generation (SPINE §5, 0.6.0).
+//! AGENTS.md resident-projection generation (SPINE §5, 0.7.0).
 //!
-//! One artifact: root AGENTS.md IS the injected resident situation graph —
-//! a `#`-comment preamble followed by deterministic TriG. `situation/` is
-//! the complete validated store; the artifact carries the current working
-//! set. No prose projection, no graph.trig. C7 parse-back reads the same file
-//! the harness injects (the preamble is legal TriG comments).
-//!
-//! Matching is by IRI *local name* (last path segment), so it is robust to
-//! the ontology base IRI the seed context chooses.
+//! One artifact: root AGENTS.md is the injected resident situation graph —
+//! comment preamble plus deterministic TriG. Mount registrations and
+//! Bedrock-owned pointer linkage are resident; expansion quads never are.
+//! C7 parses this exact file.
 
 use oxrdf::{Quad, Term};
 use std::collections::BTreeMap;
 
 /// Predicate local names this generator understands.
 fn local_name(iri: &str) -> &str {
-    iri.rsplit(['#', '/']).next().unwrap_or(iri)
+    iri.rsplit(['#', '/', ':']).next().unwrap_or(iri)
 }
 
 /// First literal value of any of `names` (by predicate local name).
@@ -55,16 +51,39 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
     }
 
     let mut identity = None::<(String, String)>; // (label, statement)
+    let mut mounts = Vec::new(); // (name, decoded path, checker identity)
     for (id, vqs) in &by_subject {
+        let types: Vec<&str> = vqs
+            .iter()
+            .filter(|q| q.predicate == oxrdf::vocab::rdf::TYPE)
+            .filter_map(|q| match &q.object {
+                Term::NamedNode(node) => Some(local_name(node.as_str())),
+                _ => None,
+            })
+            .collect();
         let role = literal_of(vqs, &["role"]);
-        if role.as_deref() != Some("identity") {
-            continue;
+        if role.as_deref() == Some("identity") {
+            identity = Some((
+                literal_of(vqs, &["label"]).unwrap_or_else(|| id.clone()),
+                literal_of(vqs, &["statement", "description", "instruction"]).unwrap_or_default(),
+            ));
         }
-        identity = Some((
-            literal_of(vqs, &["label"]).unwrap_or_else(|| id.clone()),
-            literal_of(vqs, &["statement", "description", "instruction"]).unwrap_or_default(),
-        ));
+        if types.contains(&"ExpansionMount") {
+            let name = literal_of(vqs, &["mount-name"]).unwrap_or_else(|| id.clone());
+            let checker = literal_of(vqs, &["checker-identity"]).unwrap_or_default();
+            let path = vqs
+                .iter()
+                .find(|q| local_name(q.predicate.as_str()) == "mount-path")
+                .and_then(|q| match &q.object {
+                    Term::NamedNode(node) => Some(crate::compile::path_pointer_of(node.as_str())),
+                    _ => None,
+                })
+                .unwrap_or_default();
+            mounts.push((name, path, checker));
+        }
     }
+    mounts.sort();
+    mounts.dedup();
 
     let mut out = String::new();
     // Machine-owned stamp: this file is generated, never hand-edited.
@@ -90,6 +109,15 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
         }
         Some((label, _)) => out.push_str(&format!("# {} — {}\n", repo_name, label)),
         None => out.push_str(&format!("# {}\n", repo_name)),
+    }
+    out.push_str("#\n");
+    out.push_str("# Mounted expansions:\n");
+    if mounts.is_empty() {
+        out.push_str("# - none registered\n");
+    } else {
+        for (name, path, checker) in &mounts {
+            out.push_str(&format!("# - {name} — path: {path}; checker: {checker}\n"));
+        }
     }
     out.push_str("#\n");
     // Operating this repository (base protocol). Static preamble lines —

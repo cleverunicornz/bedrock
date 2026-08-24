@@ -12,7 +12,7 @@
 //! and graph-membership checks live here; C7 parse-back here. C1/C4/C5/C6
 //! are orchestrated by `check`.
 
-use crate::contextreg::{ContextRegistry, GRAPH_NAMESPACES, PREFIXES};
+use crate::contextreg::{ContextRegistry, PREFIXES};
 use crate::errors::Violation;
 use crate::yamlsyntax::{self, YamlViolation};
 use oxjsonld::{JsonLdParser, JsonLdRemoteDocument};
@@ -349,12 +349,9 @@ pub fn expand(
     Ok(quads)
 }
 
-/// C3: named-graph membership — a file's quads may only live in its own
-/// namespace graph (default-graph quads are folded in); named graphs are
-/// otherwise restricted to the five namespace IRIs.
-///
-/// `ns` is the file's namespace (`""`/`None` for non-namespace files such as
-/// `references/**` or golden fixtures, which compile into the default graph).
+/// C3 named-graph membership. Canonical and bridge-era graph IRIs are
+/// accepted on read; every accepted namespace graph normalizes to its
+/// canonical `urn:bedrock:graph/<namespace>` projection.
 pub fn remap_graphs(
     quads: Vec<Quad>,
     ns: Option<&str>,
@@ -377,17 +374,17 @@ pub fn remap_graphs(
                 out.push(q);
             }
             GraphName::NamedNode(g) => {
-                let g_str = g.to_string();
-                let in_own = own.as_deref() == Some(g_str.as_str());
-                let in_any = GRAPH_NAMESPACES
-                    .iter()
-                    .any(|n| crate::contextreg::namespace_graph(n) == g_str);
+                let g_str = g.as_str();
+                let in_own = ns
+                    .map(|name| crate::contextreg::is_namespace_graph(g_str, name))
+                    .unwrap_or(false);
+                let in_any = crate::contextreg::is_any_namespace_graph(g_str);
                 if !in_any {
                     if violation.is_none() {
                         violation = Some(Violation::new(
                             "C3",
                             rel_path,
-                            line_of(src, g.as_str()),
+                            line_of(src, g_str),
                             format!(
                                 "named graph membership is restricted to the namespace directory (definition|architecture|risk|plan|record); got graph {g_str}"
                             ),
@@ -398,7 +395,7 @@ pub fn remap_graphs(
                         violation = Some(Violation::new(
                             "C3",
                             rel_path,
-                            line_of(src, g.as_str()),
+                            line_of(src, g_str),
                             format!(
                                 "file graphs into {g_str} but its own namespace graph is {}",
                                 own.as_deref().unwrap_or("<none>")
@@ -406,6 +403,10 @@ pub fn remap_graphs(
                         ));
                     }
                 } else {
+                    let mut q = q;
+                    q.graph_name = NamedNode::new(own.clone().expect("named source has namespace"))
+                        .expect("namespace graph IRI is valid")
+                        .into();
                     out.push(q);
                 }
             }
@@ -514,11 +515,9 @@ fn line_of(text: &str, needle: &str) -> u32 {
     1
 }
 
-/// Render a human path pointer from a bedrock path IRI: strip the
-/// `https://yeetz.dev/bedrock/path/` prefix (W2 contract) to recover the
-/// repo-relative path; non-path IRIs pass through unchanged.
+/// Render a human path pointer from either bridge-era Bedrock path IRI.
 pub fn path_pointer_of(iri: &str) -> String {
-    iri.strip_prefix(crate::contextreg::PATH_PREFIX)
-        .map(|p| p.to_string())
+    crate::contextreg::path_from_iri(iri)
+        .map(str::to_string)
         .unwrap_or_else(|| iri.to_string())
 }

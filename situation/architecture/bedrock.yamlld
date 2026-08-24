@@ -1,8 +1,8 @@
 # Bedrock's identity vertex. `role: identity` sources the generated AGENTS.md
 # title; path edges disclose the repository surface.
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/bedrock"
-"@type": "https://yeetz.dev/bedrock/ontology/Identity"
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/bedrock"
+"@type": "urn:bedrock:ontology/Identity"
 label: "bedrock"
 role: "identity"
 statement: >
@@ -10,6 +10,6 @@ statement: >
   validates a repo's complete YAML-LD situation, then compiles its current
   resident working set into ONE injected artifact: the root AGENTS.md.
 path:
-  - "https://yeetz.dev/bedrock/path/spec"
-  - "https://yeetz.dev/bedrock/path/seed"
-  - "https://yeetz.dev/bedrock/path/situation"
+  - "urn:bedrock:path/spec"
+  - "urn:bedrock:path/seed"
+  - "urn:bedrock:path/situation"

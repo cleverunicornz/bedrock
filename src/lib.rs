@@ -11,6 +11,7 @@ pub mod embedded;
 pub mod errors;
 pub mod generate;
 pub mod install;
+pub(crate) mod mount;
 pub mod provenance;
 pub mod schema;
 pub mod yamlsyntax;

@@ -1,7 +1,7 @@
 # Floor invariant one (fixture seed floor, W2-conformant).
-"@context": "https://yeetz.dev/bedrock/context/v1"
-"@id": "https://yeetz.dev/bedrock/vertex/invariant-01"
-"@type": "https://yeetz.dev/bedrock/ontology/Invariant"
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/invariant-01"
+"@type": "urn:bedrock:ontology/Invariant"
 label: "Floor invariant one"
 layer: floor
 statement: "Code is a possibility space: collapse it to defined behavior, and say what else could happen."
