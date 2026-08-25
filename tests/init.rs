@@ -255,11 +255,12 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
     );
     let workflow = std::fs::read_to_string(s.path().join(".github/workflows/bedrock.yml")).unwrap();
     assert!(
-        workflow.contains("cleverunicornz/bedrock/.github/workflows/graph.yml@")
+        workflow.contains("cleverunicornz/bedrock/.github/workflows/graph.yml@v0.8.0")
+            && workflow.contains("synchronize")
             && !workflow.contains("cargo install")
             && !workflow.contains("paths:"),
-        "promoted workflow is a caller stub for the central reusable gate, \
-         carries no gate logic, and never filters by path: {workflow}"
+        "promoted workflow is a current-head caller stub pinned to the v0.8.0 \
+         central reusable gate, carries no gate logic, and never filters by path: {workflow}"
     );
 
     // End-to-end: the seeded repo passes a full check with no seed env.

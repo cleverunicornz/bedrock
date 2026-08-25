@@ -7,7 +7,8 @@ root `AGENTS.md`, ran `check`, and it passed. Go in order.
 
 - `situation/` skeleton — six base namespaces, ready for vertices.
 - Seed floor — invariants and terms tagged `layer: floor`.
-- `seed/substrate-lock.json` plus a lock-consuming dry-run workflow.
+- `seed/substrate-lock.json` plus a caller pinned to Bedrock's central reusable
+  gate. The gate resolves the checker lock and runs for every current PR head.
 - The operating reference — `situation/references/bedrock-operating.md`, the
   base protocol: the CHAIN (promise, oracle, witness, residual), the ontology,
   every rule. Read it before writing your first vertex.

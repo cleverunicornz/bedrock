@@ -104,7 +104,7 @@ and its 2–5 repo-specific process skills below. Final prose.
 11. **CI:** every Linux/platform-neutral job runs on `org-ci-linux-x64`;
     WarpBuild only for native macOS/Windows artifacts
     (`warp-macos-15-arm64-6x`, `warp-windows-latest-x64-4x`); fork-PR code is
-    mechanically rejected before runner assignment; a missing host tool is a
+    mechanically rejected before checkout or execution; a missing host tool is a
     P0 infrastructure defect — never install a hidden substitute; CI runs the
     real suite (fmt, clippy `-D warnings`, locked build, nextest).
 12. **One fixed toolchain per repo,** canonical task names; never invent a

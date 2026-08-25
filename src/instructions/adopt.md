@@ -63,3 +63,8 @@ merges once the gate is green; a fork in the road is the human's call.
 
 Summary: this commit is the cut; prior law is reference, not binding.
 Convert survivors, delete nested AGENTS.md files, build, and open a PR.
+
+The installed `.github/workflows/bedrock.yml` is a caller pinned to Bedrock's
+central reusable gate. It gates every current PR head; later gate tags arrive
+as reviewed stub-only propagation PRs, while `bedrock update` preserves an
+existing workflow.

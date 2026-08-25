@@ -17,13 +17,11 @@
 
 name: bedrock
 
-# No `synchronize`: a PR is opened only when the work is already merge-ready,
-# so the gate fires once at the boundary — on open, on reopen, and when a
-# draft is marked ready. This also means the gate's own commit cannot
-# re-trigger it, so there is no push/re-run loop to guard against.
+# `synchronize` is required: every pushed PR revision must produce a gate for
+# its current head. Concurrency serializes revisions without suppressing them.
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
 
 concurrency:
   group: bedrock-${{ github.event.pull_request.number }}
@@ -31,4 +29,4 @@ concurrency:
 
 jobs:
   bedrock:
-    uses: cleverunicornz/bedrock/.github/workflows/graph.yml@v0.7.0
+    uses: cleverunicornz/bedrock/.github/workflows/graph.yml@v0.8.0

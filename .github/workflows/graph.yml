@@ -5,10 +5,10 @@
 # logic is corrected here once and adopted everywhere by bumping one tag.
 #
 # Contract notes:
-# - Fork rejection runs BEFORE checkout, so a fork PR fails the required check
-#   without a single fork byte executing on the runner (floor invariant 11
-#   rejects fork code; a job-level `if:` would *skip*, and a skipped check does
-#   not block a merge).
+# - GitHub Actions assigns a runner before any failing step can execute. The
+#   fork guard therefore runs at the earliest enforceable boundary: the first
+#   step, before checkout or execution of any fork-controlled bytes. A
+#   job-level `if:` would skip, and a skipped check would not reject the PR.
 # - The job is named `graph`; with the stub's job id `bedrock`, the required
 #   status check is stably named `bedrock / graph`.
 # - `checker: lock` installs the consumer's pinned binary from crates.io.
