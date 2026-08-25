@@ -121,7 +121,7 @@ fn init_stamps_machine_owned_provenance() {
     );
     let lock = std::fs::read_to_string(s.path().join("seed/substrate-lock.json")).unwrap();
     assert!(
-        lock.contains(&format!("\"$comment\": \"{stamp}")) && lock.contains("\"ref\": \"0.7.0\""),
+        lock.contains(&format!("\"$comment\": \"{stamp}")) && lock.contains("\"ref\": \"0.8.0\""),
         "lock carries provenance and exact checker ref: {lock}"
     );
     // Floor vertices get the light `# seeded by bedrock vX` note only (repos
@@ -250,7 +250,7 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
     assert!(s.path().join("AGENTS.md").exists());
     let lock = std::fs::read_to_string(s.path().join("seed/substrate-lock.json")).unwrap();
     assert!(
-        lock.contains("\"package\": \"yeetz-bedrock\"") && lock.contains("\"ref\": \"0.7.0\""),
+        lock.contains("\"package\": \"yeetz-bedrock\"") && lock.contains("\"ref\": \"0.8.0\""),
         "embedded seed installs exact substrate lock: {lock}"
     );
     let workflow = std::fs::read_to_string(s.path().join(".github/workflows/bedrock.yml")).unwrap();
@@ -500,17 +500,17 @@ fn version_gate_semver_treats_stable_as_newer_than_same_prerelease() {
 }
 
 #[test]
-fn version_gate_070_clears_published_061() {
-    assert_eq!(env!("CARGO_PKG_VERSION"), "0.7.0");
-    let s = Scratch::new("gate-070-over-061");
+fn version_gate_080_clears_published_061() {
+    assert_eq!(env!("CARGO_PKG_VERSION"), "0.8.0");
+    let s = Scratch::new("gate-080-over-061");
     let response = version_json("0.6.1");
     let (code, out, err) = run_gate(
         &["init", s.path().to_str().unwrap()],
         &manifest(),
         &response,
     );
-    assert_eq!(code, 0, "0.7.0 must clear the 0.6.1 gate:\n{out}\n{err}");
-    assert!(out.contains("running v0.7.0, newer than crates.io v0.6.1"));
+    assert_eq!(code, 0, "0.8.0 must clear the 0.6.1 gate:\n{out}\n{err}");
+    assert!(out.contains("running v0.8.0, newer than crates.io v0.6.1"));
 }
 
 #[test]

@@ -27,7 +27,7 @@ cargo install --locked yeetz-bedrock
 `--offline` deliberately bypasses only the init/adopt version lookup and is
 stamped into the epoch record.
 
-## 0.7.0 identity
+## 0.8.0 identity
 
 Canonical public coordinates use `urn:bedrock:`:
 

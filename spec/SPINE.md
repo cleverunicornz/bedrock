@@ -26,7 +26,7 @@ The crates.io version gate runs only for `init`/`adopt`. Current or newer
 proceeds; stale or unverifiable refuses before writes. `--offline` deliberately
 bypasses lookup and stamps the local version plus `offline: true`. A 404 or
 explicit zero-version response is the only inactive first-publication path.
-Check/build/update/migrate never use the network. A local 0.7.0 binary is newer
+Check/build/update/migrate never use the network. A local 0.8.0 binary is newer
 than the published 0.6.1 protocol and therefore clears the gate.
 
 ## 2. Public identity and bridge
@@ -303,7 +303,7 @@ Paths are normalized repo-relative strings, strictly sorted and unique.
 ```json
 {
   "contract": "bedrock-expansion-mount/v1",
-  "checker": { "package": "yeetz-bedrock", "ref": "0.7.0" },
+  "checker": { "package": "yeetz-bedrock", "ref": "0.8.0" },
   "supported_mount_contract_versions": [1]
 }
 ```
@@ -362,6 +362,6 @@ central reusable gate. It runs on every current PR head, rejects fork PRs
 before checkout or execution, and is advanced by reviewed tag-bump propagation
 PRs; mounted repositories keep independent expansion CI.
 
-0.7.0 carries the still-supported dual-read identity bridge and generic Mount
+0.8.0 carries the still-supported dual-read identity bridge and generic Mount
 Contract v1 on top of 0.6.1's version gate, face/body anatomy, Decision type,
 resident working set, and one-artifact model.

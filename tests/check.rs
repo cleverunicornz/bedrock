@@ -307,7 +307,7 @@ fn c10_digest_skew_polarity() {
     );
     let lock = std::fs::read_to_string(good.path().join("seed/substrate-lock.json")).unwrap();
     assert!(
-        lock.contains("\"checker\"") && lock.contains("\"ref\": \"0.7.0\""),
+        lock.contains("\"checker\"") && lock.contains("\"ref\": \"0.8.0\""),
         "substrate lock carries the exact checker ref: {lock}"
     );
 

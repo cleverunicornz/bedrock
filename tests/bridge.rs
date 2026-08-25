@@ -74,7 +74,7 @@ fn legacy_formed_repository_updates_and_explicitly_migrates() {
     let lock = scratch.path().join("seed/substrate-lock.json");
     let lock_text = std::fs::read_to_string(&lock)
         .unwrap()
-        .replace("\"ref\": \"0.7.0\"", "\"ref\": \"0.6.1\"");
+        .replace("\"ref\": \"0.8.0\"", "\"ref\": \"0.6.1\"");
     std::fs::write(&lock, lock_text).unwrap();
     let operating = scratch
         .path()

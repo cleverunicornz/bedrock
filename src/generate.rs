@@ -1,4 +1,4 @@
-//! AGENTS.md resident-projection generation (SPINE §5, 0.7.0).
+//! AGENTS.md resident-projection generation (SPINE §5, 0.8.0).
 //!
 //! One artifact: root AGENTS.md is the injected resident situation graph —
 //! comment preamble plus deterministic TriG. Mount registrations and

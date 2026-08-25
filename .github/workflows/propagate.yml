@@ -1,9 +1,10 @@
 # Propagation runs HERE and only here. Bedrock changes push downward.
 #
 # Walks every repository in the organization, and for each one that already
-# adopts the bedrock gate, opens a PR replacing its stub with this repository's
-# current seed/workflow/bedrock.yml. Repositories that never adopted it are
-# skipped; repositories already current are skipped.
+# adopts the bedrock gate, opens a PR replacing its recognized Bedrock caller
+# with this repository's current seed/workflow/bedrock.yml. Repositories that
+# never adopted it, including repositories with an unrelated workflow at the
+# same path, are skipped; repositories already current are skipped.
 #
 # No registry to maintain: the org listing IS the list.
 #
@@ -45,6 +46,7 @@ jobs:
           set -euo pipefail
           branch="bedrock/propagate-${RUN}"
           target='.github/workflows/bedrock.yml'
+          caller='^[[:space:]]*uses:[[:space:]]+cleverunicornz/bedrock/\.github/workflows/graph\.yml@v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$'
           updated=0 skipped=0 current=0
 
           gh repo list "$ORG" --limit 1000 --no-archived \
@@ -56,7 +58,16 @@ jobs:
             if ! gh api "repos/$repo/contents/$target" --jq .content 2>/dev/null \
                  | base64 -d > /tmp/current.yml; then
               skipped=$((skipped + 1))
-              echo "skip    $repo (does not adopt the bedrock gate)"
+              echo "skip    $repo (no workflow at the Bedrock caller path)"
+              continue
+            fi
+
+            # The path is not an adoption marker by itself. Only replace a
+            # caller that already delegates to this repository's versioned
+            # reusable gate; preserve consumer-owned workflows byte-for-byte.
+            if ! grep -Eq "$caller" /tmp/current.yml; then
+              skipped=$((skipped + 1))
+              echo "skip    $repo (workflow is not a recognized Bedrock caller)"
               continue
             fi
 
