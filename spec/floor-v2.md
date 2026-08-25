@@ -94,12 +94,17 @@ and its 2–5 repo-specific process skills below. Final prose.
    crate or repo; work backwards from that. Extract when the rubric (§5)
    passes; private only for named domain knowledge or secrets.
 10. **Git:** force push does not exist; nothing pushed is deleted; one writer
-    per ref; PRs always — a human merges the default branch. Same policy in
-    every repo.
+    per ref; PRs always, and no merge onto a red gate. Agents merge their own
+    PRs once the gate is green — agreed features, ordinary work, propagations.
+    A human merges only at a fork in the road: a choice between architectures,
+    removal of a working feature or path, or a blast radius that cascades
+    across repositories. That call is the human's because an agent cannot see
+    the space the decision sits in. A human may grant merge authority
+    explicitly. Same policy in every repo.
 11. **CI:** every Linux/platform-neutral job runs on `org-ci-linux-x64`;
     WarpBuild only for native macOS/Windows artifacts
     (`warp-macos-15-arm64-6x`, `warp-windows-latest-x64-4x`); fork-PR code is
-    mechanically rejected before runner assignment; a missing host tool is a
+    mechanically rejected before checkout or execution; a missing host tool is a
     P0 infrastructure defect — never install a hidden substitute; CI runs the
     real suite (fmt, clippy `-D warnings`, locked build, nextest).
 12. **One fixed toolchain per repo,** canonical task names; never invent a

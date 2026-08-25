@@ -27,7 +27,7 @@ cargo install --locked yeetz-bedrock
 `--offline` deliberately bypasses only the init/adopt version lookup and is
 stamped into the epoch record.
 
-## 0.7.0 identity
+## 0.8.0 identity
 
 Canonical public coordinates use `urn:bedrock:`:
 
@@ -141,17 +141,19 @@ canonically contained by a registered mount. It remains an episodic cold
 record. Decision residency/supersession, Plan face/body rules, witness gates,
 and projection closure remain unchanged.
 
-## Substrate lock and CI
+## Substrate lock and central CI
 
-`seed/substrate-lock.json` pins exact Bedrock checker package/ref and supported
-Mount Contract versions. C10 guards it. The seed workflow keeps the 0.6 dry-run
-projection report and AGENTS-only drift gate, but installs Bedrock only from
-that lock under runner temporary storage.
+`seed/substrate-lock.json` pins the consumer's exact Bedrock checker package/ref
+and supported Mount Contract versions. C10 guards it. The installed workflow is
+a caller stub pinned to the immutable `v0.8.0` reusable gate in this repository;
+the central gate resolves that lock, runs check/build, and verifies AGENTS.md.
 
-Existing workflows are never rewritten. Mount consumers manually replace the
-standalone job with the expansion-owned combined witness job, ordered:
-Bedrock check, expansion check, expansion build, expansion graph/manifest
-no-diff, AGENTS.md no-diff.
+The caller gates every current PR head, including `synchronize`. Its first step
+rejects fork PRs before checkout or execution of fork-controlled bytes. Init
+installs a missing caller; update preserves present workflow bytes. New gate
+tags are adopted by reviewed stub bumps, and the release propagation workflow
+opens that one-file change in existing adopters. Mounted repositories retain
+independent expansion CI; they do not replace the Bedrock caller.
 
 Failures remain:
 

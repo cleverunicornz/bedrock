@@ -7,7 +7,8 @@ root `AGENTS.md`, ran `check`, and it passed. Go in order.
 
 - `situation/` skeleton — six base namespaces, ready for vertices.
 - Seed floor — invariants and terms tagged `layer: floor`.
-- `seed/substrate-lock.json` plus a lock-consuming dry-run workflow.
+- `seed/substrate-lock.json` plus a caller pinned to Bedrock's central reusable
+  gate. The gate resolves the checker lock and runs for every current PR head.
 - The operating reference — `situation/references/bedrock-operating.md`, the
   base protocol: the CHAIN (promise, oracle, witness, residual), the ontology,
   every rule. Read it before writing your first vertex.
@@ -58,7 +59,8 @@ it by hand; delete any other copy. This law is non-negotiable.
 ## 6. Commit and PR
 
 Commit source and regenerated AGENTS.md (the resident projection); open a
-pull request. A human merges; you do not merge your own work.
+pull request. An agent merges once the gate is green; a fork in the road — an
+architecture choice, a removal, a cascading blast radius — is the human's call.
 
 Summary: skeleton, floor, substrate lock, workflow, and root AGENTS.md are
-live. Add law as vertices, run `bedrock build`, then PR for a human merge.
+live. Add law as vertices, run `bedrock build`, then open a PR.

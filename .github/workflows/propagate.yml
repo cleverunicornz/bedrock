@@ -1,0 +1,106 @@
+# Propagation runs HERE and only here. Bedrock changes push downward.
+#
+# Walks every repository in the organization, and for each one that already
+# adopts the bedrock gate, opens a PR replacing its recognized Bedrock caller
+# with this repository's current seed/workflow/bedrock.yml. Repositories that
+# never adopted it, including repositories with an unrelated workflow at the
+# same path, are skipped; repositories already current are skipped.
+#
+# No registry to maintain: the org listing IS the list.
+#
+# Deterministic on purpose — this job replaces one known file with one known
+# file. Agents author graphs; they are not needed to copy bytes.
+
+name: propagate
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  propagate:
+    runs-on: org-ci-linux-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app
+        with:
+          app-id: ${{ secrets.BEDROCK_APP_ID }}
+          private-key: ${{ secrets.BEDROCK_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Open a stub-update PR in every adopting repository
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          ORG: ${{ github.repository_owner }}
+          SELF: ${{ github.repository }}
+          RUN: ${{ github.run_id }}
+          STUB: ${{ github.workspace }}/seed/workflow/bedrock.yml
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="bedrock/propagate-${RUN}"
+          target='.github/workflows/bedrock.yml'
+          caller='^[[:space:]]*uses:[[:space:]]+cleverunicornz/bedrock/\.github/workflows/graph\.yml@v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$'
+          updated=0 skipped=0 current=0
+
+          gh repo list "$ORG" --limit 1000 --no-archived \
+            --json nameWithOwner --jq '.[].nameWithOwner' > repos.txt
+
+          while read -r repo; do
+            [ "$repo" = "$SELF" ] && continue
+
+            if ! gh api "repos/$repo/contents/$target" --jq .content 2>/dev/null \
+                 | base64 -d > /tmp/current.yml; then
+              skipped=$((skipped + 1))
+              echo "skip    $repo (no workflow at the Bedrock caller path)"
+              continue
+            fi
+
+            # The path is not an adoption marker by itself. Only replace a
+            # caller that already delegates to this repository's versioned
+            # reusable gate; preserve consumer-owned workflows byte-for-byte.
+            if ! grep -Eq "$caller" /tmp/current.yml; then
+              skipped=$((skipped + 1))
+              echo "skip    $repo (workflow is not a recognized Bedrock caller)"
+              continue
+            fi
+
+            if cmp -s /tmp/current.yml "$STUB"; then
+              current=$((current + 1))
+              echo "current $repo"
+              continue
+            fi
+
+            work="$(mktemp -d)"
+            gh repo clone "$repo" "$work" -- --depth=1 --quiet
+            (
+              cd "$work"
+              git switch -c "$branch" --quiet
+              mkdir -p .github/workflows
+              cp "$STUB" "$target"
+              git add "$target"
+              git -c user.name='bedrock' \
+                  -c user.email='bedrock@users.noreply.github.com' \
+                  commit -m 'bedrock: adopt current gate stub' --quiet
+              git push -u origin HEAD --quiet
+              gh pr create \
+                --title 'bedrock: adopt current gate stub' \
+                --body "Propagated from ${SELF}. Replaces only ${target} with the current central stub. The gate body itself lives in ${SELF} and is not copied."
+            )
+            rm -rf "$work"
+            updated=$((updated + 1))
+            echo "updated $repo"
+          done < repos.txt
+
+          {
+            echo '## propagation'
+            echo "- PRs opened: $updated"
+            echo "- already current: $current"
+            echo "- non-adopters skipped: $skipped"
+          } >> "$GITHUB_STEP_SUMMARY"

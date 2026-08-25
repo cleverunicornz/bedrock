@@ -26,7 +26,7 @@ The crates.io version gate runs only for `init`/`adopt`. Current or newer
 proceeds; stale or unverifiable refuses before writes. `--offline` deliberately
 bypasses lookup and stamps the local version plus `offline: true`. A 404 or
 explicit zero-version response is the only inactive first-publication path.
-Check/build/update/migrate never use the network. A local 0.7.0 binary is newer
+Check/build/update/migrate never use the network. A local 0.8.0 binary is newer
 than the published 0.6.1 protocol and therefore clears the gate.
 
 ## 2. Public identity and bridge
@@ -303,24 +303,22 @@ Paths are normalized repo-relative strings, strictly sorted and unique.
 ```json
 {
   "contract": "bedrock-expansion-mount/v1",
-  "checker": { "package": "yeetz-bedrock", "ref": "0.7.0" },
+  "checker": { "package": "yeetz-bedrock", "ref": "0.8.0" },
   "supported_mount_contract_versions": [1]
 }
 ```
 
-The seed workflow preserves the resident-projection dry-run report and
-AGENTS-only drift gate, but installs Bedrock only from this lock. Cargo home,
-target, and install root live under runner temp, outside the target checkout.
-Fork code is rejected before `org-ci-linux-x64` assignment.
+The installed workflow is a caller pinned to the v0.8.0 central reusable gate.
+That gate reads this lock, runs the resident-projection report and AGENTS.md
+drift check, and keeps Cargo home, target, and install root under runner temp.
+It runs for every current PR head. Its first step rejects fork PRs before
+checkout or execution; GitHub Actions cannot fail a step before assigning its
+runner.
 
-A mount consumer performs one manual workflow migration because update never
-rewrites workflow bytes. The expansion-owned combined witness job runs:
-
-1. `bedrock check`;
-2. expansion check;
-3. expansion build;
-4. expansion graph/manifest no-diff;
-5. AGENTS.md no-diff.
+Update never rewrites a present caller. New immutable gate tags are adopted by
+reviewed stub-only propagation PRs. Mount consumers keep this Bedrock caller
+and run expansion-owned checks independently; they do not combine or replace
+the central Bedrock job.
 
 The expansion checker remains independently pinned by its own pack init.
 Neither checker ref derives from the other. Bedrock never executes registration
@@ -356,8 +354,14 @@ Graph-changing order:
 2. expansion check/build when mounted;
 3. `bedrock check` and `bedrock build`;
 4. both generated-output no-diff gates;
-5. commit source plus AGENTS.md; open a PR; a human merges.
+5. commit source plus AGENTS.md; open a PR; an agent merges a green gate, a
+   human merges at a fork in the road.
 
-0.7.0 carries the still-supported dual-read identity bridge and generic Mount
+The installed Bedrock workflow is a caller pinned to the immutable v0.8.0
+central reusable gate. It runs on every current PR head, rejects fork PRs
+before checkout or execution, and is advanced by reviewed tag-bump propagation
+PRs; mounted repositories keep independent expansion CI.
+
+0.8.0 carries the still-supported dual-read identity bridge and generic Mount
 Contract v1 on top of 0.6.1's version gate, face/body anatomy, Decision type,
 resident working set, and one-artifact model.

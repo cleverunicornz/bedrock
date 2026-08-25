@@ -165,30 +165,32 @@ project: type, label, intent, consumes/requires/references/produces/member-of/
 oracle/source/path, synthesized active state, document edge. Criteria, tasks,
 witnesses, reflection depth, residual, statement, and body remain cold.
 
-## Bedrock lock and workflow migration
+## Central Bedrock gate and workflow migration
 
-`seed/substrate-lock.json` is C10-owned and pins exact checker package/ref plus
-supported Mount Contract versions. The seed workflow retains the resident
-projection dry-run report and AGENTS-only drift gate, but installs Bedrock only
-from this lock under runner temp, outside the target checkout.
+`.github/workflows/bedrock.yml` is a small caller stub. It invokes the central
+reusable gate at
+`cleverunicornz/bedrock/.github/workflows/graph.yml@v0.8.0`; that immutable tag
+contains the gate body. The central job reads `seed/substrate-lock.json` to
+install the consumer's exact checker package/ref, runs `bedrock check` then
+`bedrock build`, and rejects an uncommitted AGENTS.md projection.
 
-Update never changes existing workflow bytes. Consumers migrate once:
+The caller fires for opened, reopened, ready-for-review, and synchronized pull
+requests, so every current head is gated. GitHub assigns a runner before a step
+can fail; the fork guard is therefore the first central-gate step and rejects
+fork PRs before checkout or execution of fork-controlled bytes.
 
-- unmounted repositories replace always-latest source install with lock
-  resolution;
-- mounted repositories replace the standalone job with the expansion-owned
-  combined witness job;
-- fixed order: Bedrock check, expansion check, expansion build, expansion
-  graph/manifest no-diff, AGENTS.md no-diff;
-- Linux/platform-neutral work uses `org-ci-linux-x64`; fork code is rejected
-  before runner assignment.
-
-Expansion checker pins remain independent. Neither derives the other.
+`bedrock init` installs the caller. `bedrock update` preserves any present
+workflow; tag adoption is a reviewed stub-only change. A Bedrock release bumps
+the seed stub's immutable tag, and the hub propagation workflow opens that
+one-file update in every repository already using the gate. Non-adopters and
+already-current callers are skipped. Mounted and unmounted repositories use
+the same central gate; expansion checker pins and expansion-owned CI remain
+independent.
 
 ## Update and authoring lanes
 
-Update owns only schemas, context, substrate lock, this reference, and a
-missing workflow; then it regenerates AGENTS.md. It never mutates authored
+Update owns only schemas, context, substrate lock, this reference, and installs
+the caller only when it is missing; then it regenerates AGENTS.md. It never mutates authored
 vertices, registrations, mounts, extension schemas, or present workflows.
 
 Authoring loop:
@@ -197,7 +199,8 @@ Authoring loop:
 2. expansion check/build when mounted;
 3. `bedrock check`, then `bedrock build`;
 4. verify expansion artifacts/manifest and AGENTS.md unchanged;
-5. commit source plus AGENTS.md; open a PR; a human merges.
+5. commit source plus AGENTS.md; open a PR; an agent merges a green gate, a
+   human merges at a fork in the road.
 
 ## Refusals
 

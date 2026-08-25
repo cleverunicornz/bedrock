@@ -58,8 +58,13 @@ mount remains opaque and is not a seventh namespace.
 ## 7. Commit and PR
 
 Commit the epoch record, converted vertices, deleted nested AGENTS.md, and
-regenerated root AGENTS.md (the resident projection); open a PR. A human
-merges — you do not merge your own.
+regenerated root AGENTS.md (the resident projection); open a PR. An agent
+merges once the gate is green; a fork in the road is the human's call.
 
 Summary: this commit is the cut; prior law is reference, not binding.
-Convert survivors, delete nested AGENTS.md files, build, PR for a human merge.
+Convert survivors, delete nested AGENTS.md files, build, and open a PR.
+
+The installed `.github/workflows/bedrock.yml` is a caller pinned to Bedrock's
+central reusable gate. It gates every current PR head; later gate tags arrive
+as reviewed stub-only propagation PRs, while `bedrock update` preserves an
+existing workflow.

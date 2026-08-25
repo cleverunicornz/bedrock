@@ -1,4 +1,4 @@
-//! AGENTS.md resident-projection generation (SPINE §5, 0.7.0).
+//! AGENTS.md resident-projection generation (SPINE §5, 0.8.0).
 //!
 //! One artifact: root AGENTS.md is the injected resident situation graph —
 //! comment preamble plus deterministic TriG. Mount registrations and
@@ -132,7 +132,7 @@ pub fn generate_agents_md(repo_root: &std::path::Path, quads: &[Quad], trig_body
     out.push_str("# - execute/ — do the work.\n");
     out.push_str("# - reflect/ — review after the fact.\n");
     out.push_str("# - deploy/ — place the result where it is recorded.\n");
-    out.push_str("# - Authoring loop: write a vertex, `bedrock check`, `bedrock build`, commit source AND generated output, open a PR — a human merges.\n");
+    out.push_str("# - Authoring loop: write a vertex, `bedrock check`, `bedrock build`, commit source AND generated output, open a PR — an agent merges a green gate, a human merges at a fork in the road.\n");
     out.push_str("# - The chain: every plan is a promise; its criteria are its oracle; its witnesses prove it held; its residual declares what was not assured.\n");
     out.push_str("# - Plans: only active routing faces are resident; draft/done/abandoned plans stay under situation/plan/ and are read on demand through their document path.\n");
     out.push_str("# - Decisions are records too: why a design is what it is lives in record/ Decision vertices — walk `supersedes` chains before relitigating a choice; write one when you close a fork. Semantics: situation/references/bedrock-operating.md\n");
