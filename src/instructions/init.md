@@ -58,7 +58,8 @@ it by hand; delete any other copy. This law is non-negotiable.
 ## 6. Commit and PR
 
 Commit source and regenerated AGENTS.md (the resident projection); open a
-pull request. A human merges; you do not merge your own work.
+pull request. An agent merges once the gate is green; a fork in the road — an
+architecture choice, a removal, a cascading blast radius — is the human's call.
 
 Summary: skeleton, floor, substrate lock, workflow, and root AGENTS.md are
-live. Add law as vertices, run `bedrock build`, then PR for a human merge.
+live. Add law as vertices, run `bedrock build`, then open a PR.

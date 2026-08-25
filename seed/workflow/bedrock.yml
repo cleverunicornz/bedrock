@@ -1,80 +1,34 @@
-# Bedrock CI template — installable by copy into `.github/workflows/`.
+# Bedrock gate — promoted by `bedrock init` into .github/workflows/bedrock.yml.
 #
-# Preserves the 0.6 resident-projection dry run/report and one-artifact gate,
-# but Mount Contract v1 resolves the substrate checker only from the
-# Bedrock-owned seed/substrate-lock.json. Tool source/build state lives under
-# runner temp, outside the target checkout. Mount consumers replace this job
-# once with their expansion-owned combined witness job; bedrock update never
-# rewrites an existing consumer workflow.
+# This is a CALLER STUB, not the gate. The job body lives centrally in
+# cleverunicornz/bedrock/.github/workflows/graph.yml and is adopted by tag, so
+# no repository ever maintains gate logic and no repository can drift from it.
+# Correct the gate once in bedrock; adopt it here by bumping the tag in a
+# reviewed PR. `bedrock update` never rewrites a present workflow.
+#
+# Required status check for branch protection: `bedrock / graph`
+#
+# No path filter, deliberately. The gate must fire on EVERY pull request — a
+# path-filtered trigger would let a code-only PR land in main with no graph
+# reference, which is the precise failure this gate exists to prevent.
+#
+# The tag below is literal because GitHub does not allow expressions in `uses:`.
+# The per-repository tool version stays in seed/substrate-lock.json.
 
 name: bedrock
 
+# No `synchronize`: a PR is opened only when the work is already merge-ready,
+# so the gate fires once at the boundary — on open, on reopen, and when a
+# draft is marked ready. This also means the gate's own commit cannot
+# re-trigger it, so there is no push/re-run loop to guard against.
 on:
-  push:
-    paths:
-      - 'situation/**'
-      - 'seed/**'
-      - 'AGENTS.md'
   pull_request:
-    paths:
-      - 'situation/**'
-      - 'seed/**'
-      - 'AGENTS.md'
+    types: [opened, reopened, ready_for_review]
+
+concurrency:
+  group: bedrock-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   bedrock:
-    runs-on: org-ci-linux-x64
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    env:
-      CARGO_HOME: ${{ runner.temp }}/bedrock-cargo
-      CARGO_TARGET_DIR: ${{ runner.temp }}/bedrock-target
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Read Bedrock substrate lock
-        id: substrate
-        shell: bash
-        run: |
-          package="$(jq -er '.checker.package | select(type == "string" and length > 0)' seed/substrate-lock.json)"
-          ref="$(jq -er '.checker.ref | select(type == "string" and length > 0)' seed/substrate-lock.json)"
-          jq -e '.contract == "bedrock-expansion-mount/v1" and (.supported_mount_contract_versions | index(1) != null)' seed/substrate-lock.json >/dev/null
-          test "$package" = 'yeetz-bedrock'
-          printf 'package=%s\nref=%s\n' "$package" "$ref" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install locked Bedrock checker outside checkout
-        shell: bash
-        run: |
-          cargo install --locked \
-            --root "$RUNNER_TEMP/bedrock-tool" \
-            --version '${{ steps.substrate.outputs.ref }}' \
-            '${{ steps.substrate.outputs.package }}'
-          echo "$RUNNER_TEMP/bedrock-tool/bin" >> "$GITHUB_PATH"
-
-      - name: bedrock check (dry run + projection report)
-        shell: bash
-        run: |
-          set -uo pipefail
-          status=0
-          {
-            echo '## bedrock report'
-            echo '```'
-            bedrock check || status=$?
-            echo '```'
-          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          exit "$status"
-
-      - name: bedrock build
-        run: bedrock build
-
-      - name: Verify resident projection is committed
-        shell: bash
-        run: |
-          if ! git diff --exit-code -- AGENTS.md; then
-            echo "error: AGENTS.md (the resident projection) is out of date." >&2
-            echo "run 'bedrock build' and commit the regenerated output." >&2
-            exit 1
-          fi
+    uses: cleverunicornz/bedrock/.github/workflows/graph.yml@v0.7.0

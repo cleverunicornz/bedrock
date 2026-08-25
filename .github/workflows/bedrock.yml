@@ -1,0 +1,24 @@
+# bedrock gates itself with the same central body every consumer adopts.
+#
+# Dogfooding is the proof the shared gate works. This caller references the
+# reusable workflow by local path (no tag) and builds the checker from this
+# checkout, because the hub validates its own working tree rather than a
+# published version.
+#
+# Required status check for branch protection: `bedrock / graph`
+
+name: bedrock
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+concurrency:
+  group: bedrock-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  bedrock:
+    uses: ./.github/workflows/graph.yml
+    with:
+      checker: workspace

@@ -1,0 +1,110 @@
+# The central bedrock gate. THIS is the shared body every repository adopts.
+#
+# Consumers never copy this file. `bedrock init` installs a ~12-line caller stub
+# (seed/workflow/bedrock.yml) that references this workflow by tag, so gate
+# logic is corrected here once and adopted everywhere by bumping one tag.
+#
+# Contract notes:
+# - Fork rejection runs BEFORE checkout, so a fork PR fails the required check
+#   without a single fork byte executing on the runner (floor invariant 11
+#   rejects fork code; a job-level `if:` would *skip*, and a skipped check does
+#   not block a merge).
+# - The job is named `graph`; with the stub's job id `bedrock`, the required
+#   status check is stably named `bedrock / graph`.
+# - `checker: lock` installs the consumer's pinned binary from crates.io.
+#   `checker: workspace` builds from the checkout, which is how this repository
+#   gates itself before a version is published.
+
+name: bedrock graph gate
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: runner label for platform-neutral work
+        required: false
+        type: string
+        default: org-ci-linux-x64
+      checker:
+        description: 'bedrock binary source: lock | workspace'
+        required: false
+        type: string
+        default: lock
+
+permissions:
+  contents: read
+
+jobs:
+  graph:
+    name: graph
+    runs-on: ${{ inputs.runner }}
+    env:
+      CARGO_HOME: ${{ runner.temp }}/bedrock-cargo
+      CARGO_TARGET_DIR: ${{ runner.temp }}/bedrock-target
+
+    steps:
+      - name: Reject fork pull requests
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name != github.repository
+        shell: bash
+        run: |
+          echo "::error::fork pull requests are rejected (floor invariant 11); this gate fails closed and never skips"
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Read the caller's substrate lock
+        if: inputs.checker == 'lock'
+        id: substrate
+        shell: bash
+        run: |
+          package="$(jq -er '.checker.package | select(type == "string" and length > 0)' seed/substrate-lock.json)"
+          ref="$(jq -er '.checker.ref | select(type == "string" and length > 0)' seed/substrate-lock.json)"
+          jq -e '.contract == "bedrock-expansion-mount/v1" and (.supported_mount_contract_versions | index(1) != null)' seed/substrate-lock.json >/dev/null
+          test "$package" = 'yeetz-bedrock'
+          printf 'package=%s\nref=%s\n' "$package" "$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Install locked bedrock outside the checkout
+        if: inputs.checker == 'lock'
+        shell: bash
+        run: |
+          cargo install --locked \
+            --root "$RUNNER_TEMP/bedrock-tool" \
+            --version '${{ steps.substrate.outputs.ref }}' \
+            '${{ steps.substrate.outputs.package }}'
+          echo "$RUNNER_TEMP/bedrock-tool/bin" >> "$GITHUB_PATH"
+
+      - name: Build bedrock from the checkout
+        if: inputs.checker == 'workspace'
+        shell: bash
+        run: |
+          cargo install --locked --path . --root "$RUNNER_TEMP/bedrock-tool"
+          echo "$RUNNER_TEMP/bedrock-tool/bin" >> "$GITHUB_PATH"
+
+      - name: bedrock check (validate source + resident projection)
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          {
+            echo '## bedrock report'
+            echo '```'
+            bedrock check || status=$?
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: bedrock build
+        run: bedrock build
+
+      - name: Resident projection must be committed
+        shell: bash
+        run: |
+          if ! git diff --exit-code -- AGENTS.md; then
+            echo "::error::AGENTS.md (the resident projection) is out of date; run 'bedrock build' and commit the regenerated output"
+            exit 1
+          fi

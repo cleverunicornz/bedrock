@@ -255,8 +255,11 @@ fn init_without_seed_on_disk_uses_embedded_copy_and_passes_check() {
     );
     let workflow = std::fs::read_to_string(s.path().join(".github/workflows/bedrock.yml")).unwrap();
     assert!(
-        workflow.contains("seed/substrate-lock.json") && !workflow.contains("latest from source"),
-        "workflow resolves the checker only from the lock: {workflow}"
+        workflow.contains("cleverunicornz/bedrock/.github/workflows/graph.yml@")
+            && !workflow.contains("cargo install")
+            && !workflow.contains("paths:"),
+        "promoted workflow is a caller stub for the central reusable gate, \
+         carries no gate logic, and never filters by path: {workflow}"
     );
 
     // End-to-end: the seeded repo passes a full check with no seed env.

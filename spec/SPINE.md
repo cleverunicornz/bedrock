@@ -356,7 +356,8 @@ Graph-changing order:
 2. expansion check/build when mounted;
 3. `bedrock check` and `bedrock build`;
 4. both generated-output no-diff gates;
-5. commit source plus AGENTS.md; open a PR; a human merges.
+5. commit source plus AGENTS.md; open a PR; an agent merges a green gate, a
+   human merges at a fork in the road.
 
 0.7.0 carries the still-supported dual-read identity bridge and generic Mount
 Contract v1 on top of 0.6.1's version gate, face/body anatomy, Decision type,

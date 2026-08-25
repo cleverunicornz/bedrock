@@ -197,7 +197,8 @@ Authoring loop:
 2. expansion check/build when mounted;
 3. `bedrock check`, then `bedrock build`;
 4. verify expansion artifacts/manifest and AGENTS.md unchanged;
-5. commit source plus AGENTS.md; open a PR; a human merges.
+5. commit source plus AGENTS.md; open a PR; an agent merges a green gate, a
+   human merges at a fork in the road.
 
 ## Refusals
 
