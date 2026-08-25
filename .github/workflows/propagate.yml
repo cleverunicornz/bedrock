@@ -89,9 +89,12 @@ jobs:
                   -c user.email='bedrock@users.noreply.github.com' \
                   commit -m 'bedrock: adopt current gate stub' --quiet
               git push -u origin HEAD --quiet
-              gh pr create \
-                --title 'bedrock: adopt current gate stub' \
-                --body "Propagated from ${SELF}. Replaces only ${target} with the current central stub. The gate body itself lives in ${SELF} and is not copied."
+              pr_url="$(
+                gh pr create \
+                  --title 'bedrock: adopt current gate stub' \
+                  --body "Propagated from ${SELF}. Replaces only ${target} with the current central stub. The gate body itself lives in ${SELF} and is not copied."
+              )"
+              gh pr comment "$pr_url" --body '@paseo bedrock-migration'
             )
             rm -rf "$work"
             updated=$((updated + 1))
