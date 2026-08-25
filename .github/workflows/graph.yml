@@ -39,8 +39,8 @@ jobs:
     name: graph
     runs-on: ${{ inputs.runner }}
     env:
-      CARGO_HOME: ${{ runner.temp }}/bedrock-cargo
-      CARGO_TARGET_DIR: ${{ runner.temp }}/bedrock-target
+      CARGO_HOME: /tmp/bedrock-cargo-${{ github.run_id }}-${{ github.run_attempt }}
+      CARGO_TARGET_DIR: /tmp/bedrock-target-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Reject fork pull requests
@@ -89,13 +89,15 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          status=0
           {
             echo '## bedrock report'
             echo '```'
-            bedrock check || status=$?
-            echo '```'
-          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          set +e
+          bedrock check 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo '```' | tee -a "$GITHUB_STEP_SUMMARY"
           exit "$status"
 
       - name: bedrock build
