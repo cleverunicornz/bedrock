@@ -10,8 +10,10 @@
 #   step, before checkout or execution of any fork-controlled bytes. A
 #   job-level `if:` would skip, and a skipped check would not reject the PR.
 # - The job is named `graph`; with the stub's job id `bedrock`, the required
-#   status check is stably named `bedrock / graph`.
-# - `checker: lock` installs the consumer's pinned binary from crates.io.
+#   status check is stably named `bedrock / graph`. `admitted: false` fails in
+#   that same job before checkout; it never substitutes a skipped alternate.
+# - `checker: lock` installs the consumer's pinned binary from the immutable
+#   canonical source revision and verifies its reported version.
 #   `checker: workspace` builds from the checkout, which is how this repository
 #   gates itself before a version is published.
 
@@ -40,6 +42,16 @@ on:
         required: false
         type: string
         default: 4e6c2fa9caf17319d9435c507cb5e527eda14dd0
+      admitted:
+        description: whether the caller's admission policy allows Bedrock
+        required: false
+        type: boolean
+        default: true
+      deferred_reason:
+        description: fail-closed reason when admission is denied
+        required: false
+        type: string
+        default: Bedrock is deferred by the caller's admission policy.
 
 permissions:
   contents: read
@@ -61,6 +73,15 @@ jobs:
         run: |
           echo "::error::fork pull requests are rejected (floor invariant 11); this gate fails closed and never skips"
           exit 1
+      - name: Enforce caller admission
+        if: inputs.admitted != true
+        shell: bash
+        env:
+          DEFERRED_REASON: ${{ inputs.deferred_reason }}
+        run: |
+          echo "::error::$DEFERRED_REASON"
+          exit 1
+
 
       - uses: actions/checkout@v4
 
