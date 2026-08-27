@@ -30,6 +30,16 @@ on:
         required: false
         type: string
         default: lock
+      checker_repository:
+        description: canonical Bedrock source repository for locked installs
+        required: false
+        type: string
+        default: https://github.com/cleverunicornz/bedrock.git
+      checker_revision:
+        description: immutable Bedrock source revision matching the substrate lock
+        required: false
+        type: string
+        default: 4e6c2fa9caf17319d9435c507cb5e527eda14dd0
 
 permissions:
   contents: read
@@ -72,10 +82,13 @@ jobs:
         if: inputs.checker == 'lock'
         shell: bash
         run: |
-          cargo install --locked \
+          cargo install --locked --force \
+            --git '${{ inputs.checker_repository }}' \
+            --rev '${{ inputs.checker_revision }}' \
             --root "$RUNNER_TEMP/bedrock-tool" \
-            --version '${{ steps.substrate.outputs.ref }}' \
             '${{ steps.substrate.outputs.package }}'
+          test "$("$RUNNER_TEMP/bedrock-tool/bin/bedrock" --version)" = \
+            "bedrock ${{ steps.substrate.outputs.ref }}"
           echo "$RUNNER_TEMP/bedrock-tool/bin" >> "$GITHUB_PATH"
 
       - name: Build bedrock from the checkout
