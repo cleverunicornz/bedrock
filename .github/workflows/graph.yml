@@ -26,7 +26,7 @@ on:
         description: runner label for platform-neutral work
         required: false
         type: string
-        default: org-ci-linux-x64
+        default: cvu-test-runner-x64
       checker:
         description: 'bedrock binary source: lock | workspace'
         required: false

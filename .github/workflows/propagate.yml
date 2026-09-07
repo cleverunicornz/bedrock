@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   propagate:
-    runs-on: org-ci-linux-x64
+    runs-on: cvu-agent-code-x64
     steps:
       - uses: actions/checkout@v4
 
