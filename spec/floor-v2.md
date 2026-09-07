@@ -101,7 +101,12 @@ and its 2–5 repo-specific process skills below. Final prose.
     across repositories. That call is the human's because an agent cannot see
     the space the decision sits in. A human may grant merge authority
     explicitly. Same policy in every repo.
-11. **CI:** every Linux/platform-neutral job runs on `org-ci-linux-x64`;
+11. **CI:** every Linux/platform-neutral job runs on the ephemeral OVH runner
+    profiles, mapped by purpose — `cvu-test-runner-x64`
+    (test/lint/validation), `cvu-native-builder-x64` (native compilation,
+    release artifacts), `cvu-docker-builder-x64` (image builds),
+    `cvu-agent-code-x64` (agent/OMP/Bedrock work), `cvu-deploy-x64`
+    (Ansible/control-plane deployment); see the select-runner skill;
     WarpBuild only for native macOS/Windows artifacts
     (`warp-macos-15-arm64-6x`, `warp-windows-latest-x64-4x`); fork-PR code is
     mechanically rejected before checkout or execution; a missing host tool is a
