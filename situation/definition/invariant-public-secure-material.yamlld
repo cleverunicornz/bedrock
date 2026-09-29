@@ -1,0 +1,13 @@
+# Repository invariant (operator rule of 2026-09-29; organization layer 1.16.0). Layer: situated.
+"@context": "urn:bedrock:context/v1"
+"@id": "urn:bedrock:vertex/invariant-public-secure-material"
+"@type": "urn:bedrock:ontology/Invariant"
+label: "Public secure-material boundary"
+layer: "situated"
+statement: >
+  This repository is public. Secure material — our own known vulnerabilities
+  from the security vault, their details, exploitability and affected code
+  paths — is never represented in it: not in code, comments, commits,
+  branches, issues, pull requests, reviews or comments. Public CVE and CWE
+  references are fine. A fix lands normally, with a Promise that describes the
+  property the code keeps, never the vulnerability.
